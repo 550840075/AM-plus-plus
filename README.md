@@ -13,7 +13,7 @@ AM++ 是面向 libxposed API 102 的 Apple Music 增强模块。目前主要针�
 
 手机液态玻璃会为底部导航栏和迷你播放器增加实时背景模糊、半透明材质与选中项胶囊。该功能仍可能在冷启动或全屏播放器收回时出现单帧闪烁，因此默认关闭并统一标记为 WIP。
 
-未来歌词模糊方案移植并适配自 [a23bc/amlyricblur](https://github.com/a23bc/amlyricblur)，参考提交为 [`3417e217d7692ae742bbae80d2bd51aadffcd59e`](https://github.com/a23bc/amlyricblur/commit/3417e217d7692ae742bbae80d2bd51aadffcd59e)。本项目保留了其核心歌词行识别、滚动期间清除模糊、按高亮位置重新计算以及模糊动画方案，并针对当前 libxposed API 102 模块结构进行了接入适配。原项目采用 MIT License，完整版权与许可文本见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+未来歌词模糊方案移植并适配自 [a23bc/amlyricblur](https://github.com/a23bc/amlyricblur)
 
 ## 平板双栏播放器演示
 
