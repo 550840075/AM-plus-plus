@@ -32,13 +32,7 @@ AM++ 是面向 libxposed API 102 的 Apple Music 增强模块。目前主要针�
 > [!WARNING]
 > 这玩意纯纯半成品，bug多得离谱，截个图还是ok的
 
-非常欢迎大家提交 Issue 和 Pull Request，共同完善液态玻璃功能。尤其欢迎针对以下方向的贡献：
-
-- 消除冷启动、播放器展开和收回过程中的底部闪烁；
-- 改善 BlurView/RenderNode 的生命周期、背景采样和性能；
-- 调整材质、描边、阴影、选中胶囊和动画效果；
-- 补充不同 Android 版本、屏幕尺寸和 ROM 的兼容性验证；
-- 为关键行为增加可重复的自动化或真机回归检查。
+非常欢迎大家提交 Issue 和 Pull Request，共同完善液态玻璃功能。
 
 提交 PR 前请至少运行 `test`、`lintVitalRelease` 和 `assembleRelease`，并在涉及界面行为时附上设备、系统版本和验证截图或录屏。
 
