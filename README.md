@@ -81,7 +81,7 @@ chmod +x gradlew
 app/build/outputs/apk/release/app-release.apk
 ```
 
-默认 release 构建使用 Android debug 证书，仅适合本地测试。正式发布前请在 `app/build.gradle.kts` 中配置自己的稳定签名；更换签名后，已安装的不同签名版本需要先卸载。
+正式 Release 使用项目专用签名。首次在本地构建时，将 `keystore.properties.example` 复制为被 Git 忽略的 `keystore.properties`，填写 keystore 路径、密码与别名；未提供签名配置时仍可构建 Debug APK，但不能生成可发布的正式签名产物。GitHub Actions 的签名材料保存在仓库 Secrets 中，工作流会拒绝上传 Android debug 证书签名的 APK。
 
 ## 实现说明
 
