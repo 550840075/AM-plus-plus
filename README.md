@@ -15,6 +15,14 @@ AM++ 是面向 libxposed API 102 的 Apple Music 增强模块。目前主要针�
 
 未来歌词模糊方案移植并适配自 [a23bc/amlyricblur](https://github.com/a23bc/amlyricblur)，参考提交为 [`3417e217d7692ae742bbae80d2bd51aadffcd59e`](https://github.com/a23bc/amlyricblur/commit/3417e217d7692ae742bbae80d2bd51aadffcd59e)。本项目保留了其核心歌词行识别、滚动期间清除模糊、按高亮位置重新计算以及模糊动画方案，并针对当前 libxposed API 102 模块结构进行了接入适配。原项目采用 MIT License，完整版权与许可文本见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+## 平板双栏播放器演示
+
+<p align="center">
+  <img src="docs/images/tablet-dual-pane-player-demo.jpg" alt="AM++ 平板横屏双栏播放器演示效果" width="900">
+</p>
+
+在 Apple Music 官方识别为平板的横屏布局中，播放器以左侧专辑封面与播放控制、右侧实时歌词的双栏形式显示。该功能默认开启。
+
 ## 液态玻璃演示（WIP）
 
 <p align="center">
