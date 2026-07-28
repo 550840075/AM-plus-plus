@@ -11,7 +11,7 @@ jobs:
   android:
     runs-on: ubuntu-latest
     env:
-      AMPP_RELEASE_STORE_FILE: ${{ runner.temp }}/am-plus-plus-release.jks
+      AMPP_RELEASE_STORE_FILE: ${{ github.workspace }}/am-plus-plus-release.jks
       AMPP_RELEASE_STORE_PASSWORD: ${{ secrets.AMPP_RELEASE_STORE_PASSWORD }}
       AMPP_RELEASE_KEY_ALIAS: ${{ secrets.AMPP_RELEASE_KEY_ALIAS }}
       AMPP_RELEASE_KEY_PASSWORD: ${{ secrets.AMPP_RELEASE_KEY_PASSWORD }}
