@@ -20,33 +20,33 @@ class EditorialVideoFeatureStructuralRegressionTest {
     fun `persists and transports the tablet editorial video setting default on`() {
         val models = source("dev/amenhancer/module/model/ModuleModels.kt")
         val store = source("dev/amenhancer/module/config/ConfigStore.kt")
-        val contract = source("dev/amenhancer/module/config/ConfigContract.kt")
+        val schema = source("dev/amenhancer/module/config/ModuleSettingsSchema.kt")
         val client = source("dev/amenhancer/module/config/TargetConfigClient.kt")
         val application = source("dev/amenhancer/module/ModuleApplication.kt")
         val settings = source("dev/amenhancer/module/ui/SettingsActivity.kt")
 
         assertTrue(models.contains("val disableEditorialVideoOnTablet: Boolean = true"))
-        assertTrue(store.contains("KEY_DISABLE_EDITORIAL_VIDEO_ON_TABLET"))
-        assertTrue(store.contains("settings.disableEditorialVideoOnTablet"))
-        assertTrue(contract.contains("KEY_DISABLE_EDITORIAL_VIDEO_ON_TABLET"))
+        assertTrue(schema.contains("\"disable_editorial_video_on_tablet\""))
+        assertTrue(schema.contains("settings.disableEditorialVideoOnTablet"))
+        assertTrue(store.contains("ModuleSettingsSchema.encode(settings)"))
         assertTrue(application.contains("getRemotePreferences(ModuleConstants.REMOTE_PREFERENCES_GROUP)"))
-        assertTrue(client.contains("disableEditorialVideoOnTablet = preferences.getBoolean("))
+        assertTrue(client.contains("ModuleSettingsSchema.decode(preferences.all)"))
         assertTrue(settings.contains("平板禁用动态视频"))
         assertTrue(settings.contains("store.settings().copy(disableEditorialVideoOnTablet = it)"))
     }
 
     @Test
     fun `matches only the modified apk editorial video url selector contract`() {
-        val locator = source("dev/amenhancer/module/hook/TargetSymbolLocator.kt")
+        val symbols = source("dev/amenhancer/module/hook/TargetSymbols.kt")
         val feature = source("dev/amenhancer/module/hook/EditorialVideoFeature.kt")
 
-        assertTrue(locator.contains("com.apple.android.music.player.c1"))
-        assertTrue(locator.contains("com.apple.android.music.model.Song"))
-        assertTrue(locator.contains("Float::class.javaPrimitiveType"))
-        assertTrue(locator.contains("EditorialVideo\\\$Flavor"))
-        assertTrue(locator.contains("parameterTypes[2].isArray"))
-        assertTrue(locator.contains("method.returnType == String::class.java"))
-        assertTrue(feature.contains("editorialVideoUrlSelector()"))
+        assertTrue(symbols.contains("com.apple.android.music.player.c1"))
+        assertTrue(symbols.contains("com.apple.android.music.model.Song"))
+        assertTrue(symbols.contains("Float::class.javaPrimitiveType"))
+        assertTrue(symbols.contains("EditorialVideo\\\$Flavor"))
+        assertTrue(symbols.contains("method.parameterTypes[2].isArray"))
+        assertTrue(symbols.contains("method.returnType == String::class.java"))
+        assertTrue(feature.contains("AppleMusicSymbols.EditorialVideoUrlSelector"))
         assertFalse(feature.contains("TextureView"))
     }
 
