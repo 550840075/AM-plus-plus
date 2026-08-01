@@ -69,8 +69,8 @@ class DualPaneStructuralRegressionTest {
         assertTrue(source.contains("PLAYER_CONTAINER"))
         assertTrue(source.contains("NAVIGATION_TABS_HEIGHT"))
         assertTrue(source.contains("constrainFullWidth(params)"))
-        assertTrue(source.contains("params.bottomMargin = 0"))
-        assertFalse(source.contains("params.bottomMargin = tabsHeight"))
+        assertTrue(source.contains("params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context))"))
+        assertTrue(source.contains("tabsHeight"))
         assertTrue(source.contains("NAVIGATION_TABS_DIVIDER"))
         assertTrue(source.contains("clearLegacyWidthContract(params)"))
         assertTrue(source.contains("\"dimensionRatio\" to \"G\""))
@@ -133,9 +133,41 @@ class DualPaneStructuralRegressionTest {
 
     @Test
     fun `lets the native stacked holder own the collapsed player offset`() {
-        assertTrue(source.contains("configurePlayerContainer(playerContainer)"))
-        assertTrue(source.contains("params.bottomMargin = 0"))
+        assertTrue(source.contains("configurePlayerContainer(playerContainer, tabsHeight, root.context)"))
+        assertTrue(source.contains("FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context)"))
         assertFalse(source.contains("restoreStackedNavigationLayout"))
+    }
+
+    @Test
+    fun `gates flat navigation reservation to tablet landscape aspect ratio`() {
+        assertTrue(source.contains("internal object FlatLandscapeWindowPolicy"))
+        assertTrue(source.contains("TabletModeQualifier.isOfficialTablet(context)"))
+        assertTrue(source.contains("configuration.orientation == Configuration.ORIENTATION_LANDSCAPE"))
+        assertTrue(source.contains("height > 0"))
+        assertTrue(source.contains("width.toFloat() / height.toFloat() >= 1.7f"))
+    }
+
+    @Test
+    fun `detects flat player overlap beyond the eager window policy`() {
+        assertTrue(source.contains("installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)"))
+        assertFalse(source.contains("if (!FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(root.context)) return"))
+        assertTrue(source.contains("params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context))"))
+        assertTrue(source.contains("FlatPlayerBoundaryPolicy.decide"))
+        assertTrue(source.contains("sheet.getLocationInWindow(sheetLocation)"))
+        assertTrue(source.contains("tabsFrame.getLocationInWindow(tabsLocation)"))
+        assertTrue(source.contains("reserveNavigationSpace = decision.reserveNavigationSpace"))
+        assertTrue(source.contains("params.bottomMargin = desired"))
+    }
+
+    @Test
+    fun `observes delayed native sheet offsets at the pre draw boundary`() {
+        assertTrue(source.contains("ViewTreeObserver.OnPreDrawListener"))
+        assertTrue(source.contains("sheet.viewTreeObserver.addOnPreDrawListener"))
+        assertTrue(source.contains("removeOnPreDrawListener"))
+        assertTrue(source.contains("sheet.addOnAttachStateChangeListener"))
+        assertTrue(source.contains("installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)"))
+        assertTrue(source.contains("val desiredTabsVisibility = if (decision.tabsVisible) View.VISIBLE else View.INVISIBLE"))
+        assertTrue(source.contains("tabsFrame.visibility = desiredTabsVisibility"))
     }
 
     @Test
@@ -149,8 +181,9 @@ class DualPaneStructuralRegressionTest {
         assertTrue(source.contains("DualPaneShell.installImmediately(root)"))
         assertTrue(source.contains("installForControllerRoot(controllerInstance, param.result as? View, \"onCreateView\")"))
         assertFalse(source.contains("PendingDualPaneState"))
-        assertFalse(source.contains("addOnAttachStateChangeListener"))
-        assertFalse(source.contains("onViewAttachedToWindow"))
+        val synchronousInstallSource = source.substringBefore("private fun installFlatPlayerBoundarySync")
+        assertFalse(synchronousInstallSource.contains("addOnAttachStateChangeListener"))
+        assertFalse(synchronousInstallSource.contains("onViewAttachedToWindow"))
         assertTrue(source.contains("[AMENH-2]"))
     }
 

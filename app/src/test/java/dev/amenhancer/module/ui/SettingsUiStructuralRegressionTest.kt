@@ -48,6 +48,22 @@ class SettingsUiStructuralRegressionTest {
         assertTrue(activity.contains("store.saveSettings(store.settings().copy("))
         assertTrue(activity.contains("minimumHeight = dp(84)"))
         assertTrue(activity.contains("contentDescription = title"))
+        assertTrue(activity.contains("歌词模糊半径偏移"))
+        assertTrue(activity.contains("blurRadiusOffsetRow("))
+        assertTrue(activity.contains("SeekBar(this@SettingsActivity)"))
+        assertTrue(activity.contains("lyricBlurRadiusOffsetPx = offsetPx"))
+    }
+
+    @Test
+    fun `persists non touch blur radius changes without duplicating touch writes`() {
+        val activity = projectFile("app/src/main/java/dev/amenhancer/module/ui/SettingsActivity.kt")
+
+        assertTrue(activity.contains("var trackingTouch = false"))
+        assertTrue(activity.contains("BlurRadiusSeekBarPersistencePolicy.shouldPersistProgressChange("))
+        assertTrue(activity.contains("fromUser = fromUser"))
+        assertTrue(activity.contains("trackingTouch = trackingTouch"))
+        assertTrue(activity.contains("trackingTouch = true"))
+        assertTrue(activity.contains("trackingTouch = false"))
     }
 
     @Test
