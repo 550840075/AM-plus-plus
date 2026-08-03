@@ -10,10 +10,12 @@ internal object BidirectionalBlurPolicy {
     private val FUTURE_RADII_BY_DISTANCE = floatArrayOf(0f, 8f, 13f, 17f, BLUR_MAX)
     const val TRANSITION_DURATION_MS = 300L
 
-    fun resolveHighlights(current: Set<Int>, incoming: Set<Int>): Set<Int> =
-        (incoming.takeIf { it.isNotEmpty() } ?: current).toSet()
-
-    fun resolveDisplayHighlights(active: Set<Int>, visiblePositions: List<Int>): Set<Int> {
+    fun resolveDisplayHighlights(
+        active: Set<Int>,
+        visiblePositions: List<Int>,
+        gapAnchorPosition: Int = -1,
+    ): Set<Int> {
+        if (gapAnchorPosition >= 0) return setOf(gapAnchorPosition)
         if (active.isNotEmpty()) return active.toSet()
         return visiblePositions
             .asSequence()
@@ -21,6 +23,21 @@ internal object BidirectionalBlurPolicy {
             .minOrNull()
             ?.let(::setOf)
             .orEmpty()
+    }
+
+    fun selectInstrumentalGapAnchor(
+        active: Set<Int>,
+        isGap: Boolean,
+        instrumentalPositions: List<Int>,
+    ): Int {
+        if (active.isNotEmpty() && !isGap) return -1
+        val referencePosition = active.maxOrNull()
+        return instrumentalPositions
+            .asSequence()
+            .filter { position -> position >= 0 }
+            .minByOrNull { position ->
+                referencePosition?.let { reference -> abs(position - reference) } ?: 0
+            } ?: -1
     }
 
     fun targetRadius(position: Int, highlighted: Set<Int>): Float {
