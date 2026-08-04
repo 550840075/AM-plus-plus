@@ -86,15 +86,19 @@ internal object LayoutInflationRegistry {
             else -> null
         }
         if (exact != null && callbacks.containsKey(exact)) return exact
-        return when {
-            hasResourceName(root, "recycler_view_gradients") &&
-                hasResourceName(root, "current_player_item") -> "fragment_player_lyrics_sheet"
-            hasResourceName(root, "mini_player_content") -> "mini_player"
-            hasResourceName(root, "bottom_navigation") -> "bottom_navigation"
-            hasResourceName(root, "song_lyrics_word") -> "lyrics_word_karaoke"
-            hasResourceName(root, "song_lyrics_line") -> "lyrics_line"
-            else -> null
-        }?.takeIf(callbacks::containsKey)
+        return inferLayoutNameByResourceNames { expected -> hasResourceName(root, expected) }
+            ?.takeIf(callbacks::containsKey)
+    }
+
+    internal fun inferLayoutNameByResourceNames(isPresent: (String) -> Boolean): String? = when {
+        isPresent("lyrics_main_content") &&
+            isPresent("recycler_view_gradients") &&
+            isPresent("current_player_item") -> "fragment_player_lyrics_sheet"
+        isPresent("mini_player_content") -> "mini_player"
+        isPresent("bottom_navigation") -> "bottom_navigation"
+        isPresent("song_lyrics_word") -> "lyrics_word_karaoke"
+        isPresent("song_lyrics_line") -> "lyrics_line"
+        else -> null
     }
 
     private fun hasResourceName(view: View, expected: String): Boolean {
