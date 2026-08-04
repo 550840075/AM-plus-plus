@@ -282,7 +282,13 @@ internal class AppleMusicDualPaneTarget(
             navigationMenuResolution.valueOrNull(),
         )
         val activityResolution = symbols.resolve(AppleMusicSymbols.PlayerActivityCreateStackedNavigationHolder)
-        val chromeHooks = installNativeStackedNavigationHolderHook(activityResolution.valueOrNull())
+        val activityRootResolution = symbols.resolve(AppleMusicSymbols.PlayerActivityRoot)
+        val behaviorFieldResolution = symbols.resolve(AppleMusicSymbols.PlayerActivityBehaviorField)
+        val chromeHooks = installNativeStackedNavigationHolderHook(
+            activityResolution.valueOrNull(),
+            activityRootResolution.valueOrNull(),
+            behaviorFieldResolution.valueOrNull(),
+        )
         val lyricsFragmentResolution = symbols.resolve(AppleMusicSymbols.LyricsFragment)
         val lyricsFragmentClass = lyricsFragmentResolution.valueOrNull()
         val lyricsChromeResolution = symbols.resolve(AppleMusicSymbols.LyricsChromeAnimate)
@@ -302,6 +308,8 @@ internal class AppleMusicDualPaneTarget(
             controllerSelectPaneResolution,
             navigationMenuResolution,
             activityResolution,
+            activityRootResolution,
+            behaviorFieldResolution,
             lyricsFragmentResolution,
             lyricsChromeResolution,
             lyricsMetricsResolution,
@@ -618,33 +626,45 @@ internal class AppleMusicDualPaneTarget(
      * tablet holder. The native object then owns slide interpolation, peek
      * height, navigation translation, colors and system-bar transitions.
      */
-    private fun installNativeStackedNavigationHolderHook(method: Method?): Int {
+    private fun installNativeStackedNavigationHolderHook(
+        method: Method?,
+        rootMethod: Method?,
+        behaviorField: Field?,
+    ): Int {
         method ?: return 0
+        rootMethod ?: return 0
+        behaviorField ?: return 0
         val activityClass = method.declaringClass
-        val holderClass = activityClass.declaredClasses.firstOrNull { nested ->
-            nested.simpleName == "StackedBottomNavigationHolder" ||
-                nested.declaredConstructors.any { constructor ->
-                    constructor.parameterTypes.map { it.name } == listOf(
-                        activityClass.name,
-                        "android.view.View",
-                        "com.apple.android.music.player.PlayerBottomSheetBehavior",
-                    )
-                }
-        } ?: return 0
-        val constructor = holderClass.declaredConstructors.firstOrNull { constructor ->
-            constructor.parameterTypes.map { it.name } == listOf(
-                activityClass.name,
-                "android.view.View",
-                "com.apple.android.music.player.PlayerBottomSheetBehavior",
-            )
-        }?.apply { isAccessible = true } ?: return 0
-        val behaviorField = findField(activityClass, "c1") ?: return 0
-
+        val behaviorType = behaviorField.type
+        fun isHolderConstructor(parameters: Array<Class<*>>): Boolean {
+            if (parameters.size != 3) return false
+            val activityCompatible = parameters[0].isAssignableFrom(activityClass)
+            val viewCompatible = parameters[1].isAssignableFrom(View::class.java) ||
+                View::class.java.isAssignableFrom(parameters[1])
+            val behaviorCompatible = parameters[2].isAssignableFrom(behaviorType) ||
+                behaviorType.isAssignableFrom(parameters[2])
+            return activityCompatible && viewCompatible && behaviorCompatible
+        }
+        val holderClasses = activityClass.declaredClasses.filter { nested ->
+            nested.declaredConstructors.any { constructor ->
+                isHolderConstructor(constructor.parameterTypes)
+            }
+        }
+        val holderClass = when {
+            holderClasses.size == 1 -> holderClasses.single()
+            else -> holderClasses.singleOrNull { it.simpleName == "StackedBottomNavigationHolder" }
+                ?: return 0
+        }
+        val constructor = holderClass.declaredConstructors
+            .filter { constructor -> isHolderConstructor(constructor.parameterTypes) }
+            .singleOrNull()
+            ?.apply { isAccessible = true }
+            ?: return 0
         return if (hook(method, object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
                     val activity = param.thisObject as? Activity ?: return
                     if (!TabletModeQualifier.isEligible(activity)) return
-                    val root = DualPaneShell.activityRoot(activity) ?: return
+                    val root = DualPaneShell.activityRoot(activity, rootMethod) ?: return
                     val resources = activity.resources
                     val stackedRootId = resources.getIdentifier(
                         "bottom_navigation_root_stacked",
@@ -659,8 +679,16 @@ internal class AppleMusicDualPaneTarget(
                     val navigationRoot = sequenceOf(stackedRootId, flatRootId)
                         .filter { it != 0 }
                         .mapNotNull(root::findViewById)
-                        .firstOrNull() ?: return
-                    val behavior = runCatching { behaviorField.get(activity) }.getOrNull() ?: return
+                        .firstOrNull()
+                        ?: sequenceOf(stackedRootId, flatRootId)
+                            .filter { it != 0 }
+                            .mapNotNull { id -> activity.findViewById<View>(id) }
+                            .firstOrNull()
+                    if (navigationRoot == null) return
+                    val behavior = runCatching {
+                        behaviorField.apply { isAccessible = true }.get(activity)
+                    }.getOrNull()
+                    if (behavior == null) return
                     if (!constructor.parameterTypes[2].isInstance(behavior)) return
                     val stackedHolder = runCatching {
                         constructor.newInstance(activity, navigationRoot, behavior)
@@ -846,21 +874,21 @@ internal object FlatLandscapeWindowPolicy {
     }
 
     /**
-     * Boundary sync is needed for genuinely wide displays even when a system
-     * rail makes the activity's effective window look narrower than 1.7.
-     * Keep this separate from [shouldReserveNavigationSpace]: the latter is
-     * the eager initial-margin policy and must retain its window semantics.
+     * Observe the real sheet/tabs boundary only for wide displays. Ordinary
+     * tablets keep the v1.2.1 native holder geometry unchanged.
      */
     fun shouldInstallBoundarySync(context: Context): Boolean {
         if (!TabletModeQualifier.isOfficialTabletLandscape(context)) return false
         val configuration = context.resources.configuration
         val metrics = realDisplayMetrics(context)
-        return shouldInstallBoundarySync(
+        val enabled = shouldInstallBoundarySync(
             windowWidthDp = configuration.screenWidthDp,
             windowHeightDp = configuration.screenHeightDp,
             physicalWidthPx = metrics?.widthPixels ?: 0,
             physicalHeightPx = metrics?.heightPixels ?: 0,
         )
+        debug("flat boundary gate enabled=$enabled")
+        return enabled
     }
 
     internal fun shouldInstallBoundarySync(
@@ -912,30 +940,32 @@ internal object FlatPlayerBoundaryPolicy {
         sheetBottom: Int,
         tabsTop: Int,
         tabsHeight: Int,
+        navigationInset: Int,
         wasNavigationSpaceReserved: Boolean,
     ): FlatPlayerBoundaryDecision {
         require(rootHeight > 0) { "rootHeight must be positive" }
         val expanded = sheetTop <= rootHeight / 2
+        val sheetOverlapsTabs = sheetTop < tabsTop + tabsHeight && sheetBottom > tabsTop
         val collapsedOverlap = !expanded &&
             tabsTop > rootHeight / 2 &&
-            sheetBottom > tabsTop
+            sheetOverlapsTabs
         val reserveNavigationSpace = wasNavigationSpaceReserved || collapsedOverlap
         return FlatPlayerBoundaryDecision(
             reserveNavigationSpace = reserveNavigationSpace,
-            bottomMargin = if (!expanded && reserveNavigationSpace) tabsHeight else 0,
-            // Before this root proves it needs compensation, remain visually
-            // inert so ordinary tablet windows keep their native tab behavior.
+            bottomMargin = if (!expanded && reserveNavigationSpace) navigationInset else 0,
+            // Let the native holder own an expanded transition until the
+            // collapsed geometry has established a navigation reservation.
             tabsVisible = !reserveNavigationSpace || !expanded,
         )
     }
 }
 
 internal object DualPaneShell {
-    /** Mirrors the modified PlayerActivity's BaseActivity.n0() root lookup. */
-    fun activityRoot(activity: Activity): View? = runCatching {
-        ModernXposedRuntime.callMethod(activity, "n0") as? View
+    /** Invokes the profile-resolved Activity root method without naming its obfuscation. */
+    fun activityRoot(activity: Activity, rootMethod: Method): View? = runCatching {
+        rootMethod.apply { isAccessible = true }.invoke(activity) as? View
     }.onFailure {
-        debug("BaseActivity.n0 root lookup failed: $it")
+        debug("PlayerActivity root lookup failed: $it")
     }.getOrNull()
 
     /**
@@ -1067,8 +1097,14 @@ private object ConstraintLayoutPane {
                 configureTabsContent(bottomNavigation)
             }
             configureTabsTopShadow(topShadow)
-            configurePlayerContainer(playerContainer, tabsHeight, root.context)
-            installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)
+            configurePlayerContainer(playerContainer, tabsHeight, menuHeight, root.context)
+            installFlatPlayerBoundarySync(
+                root,
+                playerContainer,
+                tabsFrame,
+                tabsHeight,
+                (tabsHeight - menuHeight).coerceAtLeast(0),
+            )
             installTabsDivider(tabsFrame, resources)
 
             root.setTag(R.id.am_enhancer_dual_pane_state, BottomNavigationLandscapeInstalled)
@@ -1203,12 +1239,17 @@ private object ConstraintLayoutPane {
         topShadow.requestLayout()
     }
 
-    private fun configurePlayerContainer(playerContainer: View, tabsHeight: Int, context: Context) {
+    private fun configurePlayerContainer(
+        playerContainer: View,
+        tabsHeight: Int,
+        menuHeight: Int,
+        context: Context,
+    ) {
         val params = constraintMarginParams(playerContainer, PLAYER_CONTAINER)
         params.width = ViewGroup.LayoutParams.MATCH_PARENT
         params.height = ViewGroup.LayoutParams.MATCH_PARENT
         params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context)) {
-            tabsHeight
+            (tabsHeight - menuHeight).coerceAtLeast(0)
         } else {
             0
         }
@@ -1227,6 +1268,7 @@ private object ConstraintLayoutPane {
         playerContainer: View,
         tabsFrame: View,
         tabsHeight: Int,
+        navigationInset: Int,
     ) {
         if (!FlatLandscapeWindowPolicy.shouldInstallBoundarySync(root.context)) return
         val sheetId = targetId(root.resources, PLAYER_SHEET_CONTAINER)
@@ -1250,13 +1292,17 @@ private object ConstraintLayoutPane {
                 sheetBottom = sheetLocation[1] - rootTop + sheet.height,
                 tabsTop = tabsLocation[1] - rootTop,
                 tabsHeight = tabsHeight,
+                navigationInset = navigationInset,
                 wasNavigationSpaceReserved = reserveNavigationSpace,
             )
             reserveNavigationSpace = decision.reserveNavigationSpace
             val desired = decision.bottomMargin
             val desiredTabsVisibility = if (decision.tabsVisible) View.VISIBLE else View.INVISIBLE
             val tabsVisibilityChanged = tabsFrame.visibility != desiredTabsVisibility
-            if (desired == lastBottomMargin && !tabsVisibilityChanged) return
+            if (
+                desired == lastBottomMargin &&
+                !tabsVisibilityChanged
+            ) return
             lastBottomMargin = desired
             val params = constraintMarginParams(playerContainer, PLAYER_CONTAINER)
             if (params.bottomMargin != desired) {
@@ -1442,6 +1488,7 @@ private object ConstraintLayoutPane {
      */
     fun stackedTabsContainerHeight(context: Context, menuHeight: Int): Int =
         menuHeight + dp(context, STACKED_TABS_VERTICAL_INSET_DP * 2)
+
 
     private fun dp(context: Context, value: Int): Int =
         (value * context.resources.displayMetrics.density + 0.5f).toInt()

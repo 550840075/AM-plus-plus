@@ -131,11 +131,52 @@ class TargetSymbolsTest {
     }
 
     @Test
+    fun `650 profile resolves the holder root method and behavior field`() {
+        val activityName = "com.apple.android.music.common.activity.PlayerActivity"
+        val resolver = IndexedTargetSymbolResolver(
+            build = TargetBuild(ModuleConstants.TARGET_PACKAGE, "6.5.0", 1580L),
+            source = FakeTargetClassSource(classes = mapOf(activityName to DualPaneActivityFixture::class.java)),
+        )
+
+        val root = resolver.resolve(AppleMusicSymbols.PlayerActivityRoot)
+        val behavior = resolver.resolve(AppleMusicSymbols.PlayerActivityBehaviorField)
+
+        assertTrue(root is TargetResolution.Found)
+        assertEquals(SymbolMatch.VERSION_PROFILE, (root as TargetResolution.Found).match)
+        assertEquals("n0", root.value.name)
+        assertTrue(behavior is TargetResolution.Found)
+        assertEquals(SymbolMatch.VERSION_PROFILE, (behavior as TargetResolution.Found).match)
+        assertEquals("c1", behavior.value.name)
+    }
+
+    @Test
+    fun `unknown build structurally resolves unique holder root and behavior contracts`() {
+        val activityName = "com.apple.android.music.common.activity.PlayerActivity"
+        val resolver = IndexedTargetSymbolResolver(
+            build = TargetBuild.UNKNOWN,
+            source = FakeTargetClassSource(
+                names = listOf(activityName),
+                classes = mapOf(activityName to ObfuscatedDualPaneActivityFixture::class.java),
+            ),
+        )
+
+        val root = resolver.resolve(AppleMusicSymbols.PlayerActivityRoot)
+        val behavior = resolver.resolve(AppleMusicSymbols.PlayerActivityBehaviorField)
+
+        assertTrue(root is TargetResolution.Found)
+        assertEquals(SymbolMatch.STRUCTURAL_FALLBACK, (root as TargetResolution.Found).match)
+        assertEquals("x0", root.value.name)
+        assertTrue(behavior is TargetResolution.Found)
+        assertEquals(SymbolMatch.STRUCTURAL_FALLBACK, (behavior as TargetResolution.Found).match)
+        assertEquals("z7", behavior.value.name)
+    }
+
+    @Test
     fun `651 profile resolves migrated dual pane and view model owners without scanning dex`() {
         val source = FakeTargetClassSource(
             classes = mapOf(
                 "com.apple.android.music.player.fragment.q0" to DualPaneControllerFixture::class.java,
-                "com.apple.android.music.common.activity.PlayerActivity" to DualPaneActivityFixture::class.java,
+                "com.apple.android.music.common.activity.PlayerActivity" to DualPaneActivity651Fixture::class.java,
                 "com.apple.android.music.player.fragment.PlayerLyricsViewFragment" to
                     DualPaneLyricsFragmentFixture::class.java,
                 "com.apple.android.music.player.fragment.d" to DualPaneLyricsChromeFixture::class.java,
@@ -149,7 +190,7 @@ class TargetSymbolsTest {
             source = source,
         )
 
-        listOf(
+        val resolutions = listOf(
             resolver.resolve(AppleMusicSymbols.StackedNavigationMenuOnMeasure),
             resolver.resolve(AppleMusicSymbols.LyricsFragmentOnResume),
             resolver.resolve(AppleMusicSymbols.LyricsChromeAnimate),
@@ -160,12 +201,33 @@ class TargetSymbolsTest {
             resolver.resolve(AppleMusicSymbols.PlayerActivityCreateStackedNavigationHolder),
             resolver.resolve(AppleMusicSymbols.LyricsViewModelNotifyWordHighlight),
             resolver.resolve(AppleMusicSymbols.LyricsViewModelSetCurrentHighlightedLine),
-        ).forEach { resolution ->
+        )
+        resolutions.forEach { resolution ->
             assertTrue(resolution is TargetResolution.Found)
             assertEquals(SymbolMatch.VERSION_PROFILE, (resolution as TargetResolution.Found).match)
             assertEquals("apple-music-6.5.1-1583", resolution.profileId)
         }
+        assertEquals("j1", (resolutions[7] as TargetResolution.Found).value.name)
         assertEquals(0, source.classNameReads)
+    }
+
+    @Test
+    fun `651 profile resolves holder support contracts through the activity hierarchy`() {
+        val activityName = "com.apple.android.music.common.activity.PlayerActivity"
+        val resolver = IndexedTargetSymbolResolver(
+            build = TargetBuild(ModuleConstants.TARGET_PACKAGE, "6.5.1", 1583L),
+            source = FakeTargetClassSource(classes = mapOf(activityName to DualPaneActivity651Fixture::class.java)),
+        )
+
+        val root = resolver.resolve(AppleMusicSymbols.PlayerActivityRoot)
+        val behavior = resolver.resolve(AppleMusicSymbols.PlayerActivityBehaviorField)
+
+        assertTrue(root is TargetResolution.Found)
+        assertEquals(SymbolMatch.VERSION_PROFILE, (root as TargetResolution.Found).match)
+        assertEquals("l1", root.value.name)
+        assertTrue(behavior is TargetResolution.Found)
+        assertEquals(SymbolMatch.VERSION_PROFILE, (behavior as TargetResolution.Found).match)
+        assertEquals("c1", behavior.value.name)
     }
 
     @Test
@@ -725,6 +787,8 @@ class TargetSymbolsTest {
             AppleMusicSymbols.PlayerControllerCreateView,
             AppleMusicSymbols.PlayerControllerSelectPane,
             AppleMusicSymbols.PlayerActivityCreateStackedNavigationHolder,
+            AppleMusicSymbols.PlayerActivityRoot,
+            AppleMusicSymbols.PlayerActivityBehaviorField,
             AppleMusicSymbols.LyricsViewModelNotifyWordHighlight,
             AppleMusicSymbols.LyricsViewModelSetCurrentHighlightedLine,
         ).forEach { symbol ->
@@ -1169,10 +1233,33 @@ private class ControllerInitializeOnlyFixture {
     fun w1(config: BagConfig) = Unit
 }
 
-private class DualPaneActivityFixture {
+private open class BaseDualPaneActivityFixture {
+    @Suppress("unused")
+    private val c1 = com.apple.android.music.player.PlayerBottomSheetBehavior()
+
+    fun n0(): View = throw UnsupportedOperationException()
+}
+
+private class DualPaneActivityFixture : BaseDualPaneActivityFixture() {
     fun k1(): com.apple.android.music.common.activity.PlayerActivity.m =
         com.apple.android.music.common.activity.PlayerActivity.m()
 }
+
+private class DualPaneActivity651Fixture : BaseDualPaneActivityFixture() {
+    fun j1(): com.apple.android.music.common.activity.PlayerActivity.m =
+        com.apple.android.music.common.activity.PlayerActivity.m()
+
+    fun l1(): View = throw UnsupportedOperationException()
+}
+
+private open class ObfuscatedBaseDualPaneActivityFixture {
+    @Suppress("unused")
+    private val z7 = com.apple.android.music.player.PlayerBottomSheetBehavior()
+
+    fun x0(): View = throw UnsupportedOperationException()
+}
+
+private class ObfuscatedDualPaneActivityFixture : ObfuscatedBaseDualPaneActivityFixture()
 
 private class DualPaneLyricsFragmentFixture {
     fun onResume() = Unit

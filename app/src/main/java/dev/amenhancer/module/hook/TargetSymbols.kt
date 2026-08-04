@@ -115,6 +115,40 @@ internal class TargetClassIndex(private val source: TargetClassSource) {
             }.getOrDefault(emptyList())
         }
         .distinctBy(::fieldIdentity)
+
+    fun hierarchyMethods(
+        namePredicate: (String) -> Boolean,
+        contract: (Method) -> Boolean,
+    ): List<Method> = classes(namePredicate) { true }
+        .flatMap { type -> methodsFromHierarchy(type, contract) }
+        .distinctBy(::methodIdentity)
+
+    fun hierarchyFields(
+        namePredicate: (String) -> Boolean,
+        contract: (Field) -> Boolean,
+    ): List<Field> = classes(namePredicate) { true }
+        .flatMap { type -> fieldsFromHierarchy(type, contract) }
+        .distinctBy(::fieldIdentity)
+
+    fun methodsFromHierarchy(type: Class<*>, contract: (Method) -> Boolean): List<Method> =
+        generateSequence(type) { it.superclass }
+            .flatMap { current ->
+                current.declaredMethods.asSequence().filter { method ->
+                    runCatching { contract(method) }.getOrDefault(false)
+                }
+            }
+            .distinctBy(::methodIdentity)
+            .toList()
+
+    fun fieldsFromHierarchy(type: Class<*>, contract: (Field) -> Boolean): List<Field> =
+        generateSequence(type) { it.superclass }
+            .flatMap { current ->
+                current.declaredFields.asSequence().filter { field ->
+                    runCatching { contract(field) }.getOrDefault(false)
+                }
+            }
+            .distinctBy(::fieldIdentity)
+            .toList()
 }
 
 internal class TargetSymbolKey<T : Any>(
@@ -198,11 +232,16 @@ internal class IndexedTargetSymbolResolver(
 internal data class AppleMusicProfile(
     val id: String,
     val exactClasses: Map<TargetSymbolId, String>,
+    val exactMethods: Map<TargetSymbolId, String> = emptyMap(),
+    val exactFields: Map<TargetSymbolId, String> = emptyMap(),
 )
 
 internal enum class TargetSymbolId {
     PLAYER_CONTROLLER,
     PLAYER_ACTIVITY,
+    PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER,
+    PLAYER_ACTIVITY_ROOT,
+    PLAYER_ACTIVITY_BEHAVIOR_FIELD,
     EDITORIAL_VIDEO_OWNER,
     LYRICS_FRAGMENT,
     LYRICS_CHROME,
@@ -250,6 +289,13 @@ private object AppleMusicProfiles {
             TargetSymbolId.METADATA_TO_ITEM_CONVERTER to "com.apple.android.music.player.P",
             TargetSymbolId.LYRICS_AVAILABILITY_OWNER to "com.apple.android.music.player.d1",
         ),
+        exactMethods = mapOf(
+            TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "k1",
+            TargetSymbolId.PLAYER_ACTIVITY_ROOT to "n0",
+        ),
+        exactFields = mapOf(
+            TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
+        ),
     )
 
     private val appleMusic651 = AppleMusicProfile(
@@ -280,6 +326,13 @@ private object AppleMusicProfiles {
             TargetSymbolId.PLAYER_METADATA_HUB to "com.apple.android.music.player.f",
             TargetSymbolId.METADATA_TO_ITEM_CONVERTER to "com.apple.android.music.player.O",
             TargetSymbolId.LYRICS_AVAILABILITY_OWNER to "com.apple.android.music.player.e1",
+        ),
+        exactMethods = mapOf(
+            TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "j1",
+            TargetSymbolId.PLAYER_ACTIVITY_ROOT to "l1",
+        ),
+        exactFields = mapOf(
+            TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
         ),
     )
 
@@ -346,8 +399,29 @@ internal object AppleMusicSymbols {
         id = "player-activity-create-stacked-navigation-holder",
         profileOwner = TargetSymbolId.PLAYER_ACTIVITY,
         profilePolicy = ProfilePolicy.EXACT_PREFERRED,
+        exactMethodId = TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER,
         fallbackOwner = { it.endsWith(".common.activity.PlayerActivity") },
         contract = ::isPlayerActivityCreateStackedNavigationHolder,
+    )
+
+    val PlayerActivityRoot = methodSymbol(
+        id = "player-activity-root",
+        profileOwner = TargetSymbolId.PLAYER_ACTIVITY,
+        profilePolicy = ProfilePolicy.EXACT_PREFERRED,
+        exactMethodId = TargetSymbolId.PLAYER_ACTIVITY_ROOT,
+        searchHierarchy = true,
+        fallbackOwner = { it.endsWith(".common.activity.PlayerActivity") },
+        contract = ::isPlayerActivityRoot,
+    )
+
+    val PlayerActivityBehaviorField = fieldSymbol(
+        id = "player-activity-bottom-sheet-behavior",
+        profileOwner = TargetSymbolId.PLAYER_ACTIVITY,
+        profilePolicy = ProfilePolicy.EXACT_PREFERRED,
+        exactFieldId = TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD,
+        searchHierarchy = true,
+        fallbackOwner = { it.endsWith(".common.activity.PlayerActivity") },
+        contract = ::isPlayerActivityBehaviorField,
     )
 
     val EditorialVideoUrlSelector = methodSymbol(
@@ -681,6 +755,8 @@ private fun methodSymbol(
     id: String,
     profileOwner: TargetSymbolId,
     profilePolicy: ProfilePolicy = ProfilePolicy.EXACT_REQUIRED,
+    exactMethodId: TargetSymbolId? = null,
+    searchHierarchy: Boolean = false,
     fallbackOwner: (String) -> Boolean,
     contract: (Method) -> Boolean,
     structuralContract: (Method) -> Boolean = contract,
@@ -689,15 +765,70 @@ private fun methodSymbol(
     profilePolicy = profilePolicy,
     profileCandidates = { profile ->
         runCatching {
+            val expectedMethodName = exactMethodId?.let { profile?.exactMethods?.get(it) }
             profile?.exactClasses?.get(profileOwner)
                 ?.let(::load)
-                ?.declaredMethods
-                ?.filter(contract)
+                ?.let { owner ->
+                    val methods = if (searchHierarchy) {
+                        methodsFromHierarchy(owner, contract)
+                    } else {
+                        owner.declaredMethods.filter(contract)
+                    }
+                    methods.filter { method ->
+                        expectedMethodName == null || method.name == expectedMethodName
+                    }
+                }
                 .orEmpty()
         }.getOrDefault(emptyList())
     },
-    structuralCandidates = { methods(fallbackOwner, structuralContract) },
+    structuralCandidates = {
+        if (searchHierarchy) {
+            hierarchyMethods(fallbackOwner, structuralContract)
+        } else {
+            methods(fallbackOwner, structuralContract)
+        }
+    },
     identity = ::methodIdentity,
+)
+
+private fun fieldSymbol(
+    id: String,
+    profileOwner: TargetSymbolId,
+    profilePolicy: ProfilePolicy = ProfilePolicy.EXACT_REQUIRED,
+    exactFieldId: TargetSymbolId? = null,
+    searchHierarchy: Boolean = false,
+    fallbackOwner: (String) -> Boolean,
+    contract: (Field) -> Boolean,
+    structuralContract: (Field) -> Boolean = contract,
+): TargetSymbolKey<Field> = TargetSymbolKey(
+    id = id,
+    profilePolicy = profilePolicy,
+    profileCandidates = { profile ->
+        runCatching {
+            val expectedFieldName = exactFieldId?.let { profile?.exactFields?.get(it) }
+            profile?.exactClasses?.get(profileOwner)
+                ?.let(::load)
+                ?.let { owner ->
+                    val fields = if (searchHierarchy) {
+                        fieldsFromHierarchy(owner, contract)
+                    } else {
+                        owner.declaredFields.filter(contract)
+                    }
+                    fields.filter { field ->
+                        expectedFieldName == null || field.name == expectedFieldName
+                    }
+                }
+                .orEmpty()
+        }.getOrDefault(emptyList())
+    },
+    structuralCandidates = {
+        if (searchHierarchy) {
+            hierarchyFields(fallbackOwner, structuralContract)
+        } else {
+            fields(fallbackOwner, structuralContract)
+        }
+    },
+    identity = ::fieldIdentity,
 )
 
 private fun hasLyricsChromeContract(candidate: Class<*>): Boolean =
@@ -761,9 +892,25 @@ private fun hasPlayerControllerHookContract(candidate: Class<*>): Boolean =
 
 private fun isPlayerActivityCreateStackedNavigationHolder(method: Method): Boolean =
     !Modifier.isStatic(method.modifiers) &&
-        method.name == "k1" &&
         method.parameterTypes.isEmpty() &&
         method.returnType.name == "com.apple.android.music.common.activity.PlayerActivity\$m"
+
+private fun isPlayerActivityRoot(method: Method): Boolean =
+    !Modifier.isStatic(method.modifiers) &&
+        method.parameterTypes.isEmpty() &&
+        View::class.java.isAssignableFrom(method.returnType)
+
+private fun isPlayerActivityBehaviorField(field: Field): Boolean =
+    !Modifier.isStatic(field.modifiers) && isBottomSheetBehaviorType(field.type)
+
+private fun isBottomSheetBehaviorType(type: Class<*>): Boolean {
+    var current: Class<*>? = type
+    while (current != null) {
+        if (current.name == "com.google.android.material.bottomsheet.BottomSheetBehavior") return true
+        current = current.superclass
+    }
+    return type.name.endsWith("PlayerBottomSheetBehavior")
+}
 
 private fun isLyricsFragmentOnResume(method: Method): Boolean =
     !Modifier.isStatic(method.modifiers) &&
