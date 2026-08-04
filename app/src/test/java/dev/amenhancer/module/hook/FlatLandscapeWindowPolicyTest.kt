@@ -76,4 +76,16 @@ class FlatLandscapeWindowPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun `verified profile does not bypass ordinary tablet ratio gate`() {
+        assertFalse(
+            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
+                windowWidthDp = 1413,
+                windowHeightDp = 1000,
+                physicalWidthPx = 1413,
+                physicalHeightPx = 1000,
+            ),
+        )
+    }
 }

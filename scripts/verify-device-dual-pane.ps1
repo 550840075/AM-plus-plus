@@ -57,8 +57,16 @@ $left = [int]$miniPlayer.Groups[1].Value
 $top = [int]$miniPlayer.Groups[2].Value
 $right = [int]$miniPlayer.Groups[3].Value
 $bottom = [int]$miniPlayer.Groups[4].Value
-$x = [int](($left + $right) / 2)
-$y = [int](($top + $bottom) / 2)
+$miniPlayerContent = [regex]::Match(
+    $collapsedUi,
+    'resource-id="com\.apple\.android\.music:id/mini_player_content"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"'
+)
+$tapLeft = if ($miniPlayerContent.Success) { [int]$miniPlayerContent.Groups[1].Value } else { $left }
+$tapTop = if ($miniPlayerContent.Success) { [int]$miniPlayerContent.Groups[2].Value } else { $top }
+$tapRight = if ($miniPlayerContent.Success) { [int]$miniPlayerContent.Groups[3].Value } else { $right }
+$tapBottom = if ($miniPlayerContent.Success) { [int]$miniPlayerContent.Groups[4].Value } else { $bottom }
+$x = [int](($tapLeft + $tapRight) / 2)
+$y = $tapTop + [int]([Math]::Min(64, ($tapBottom - $tapTop) / 2))
 Invoke-Adb @("shell", "input", "tap", "$x", "$y") | Out-Null
 Start-Sleep -Seconds 3
 

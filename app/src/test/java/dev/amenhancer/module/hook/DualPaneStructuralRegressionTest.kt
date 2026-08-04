@@ -48,6 +48,8 @@ class DualPaneStructuralRegressionTest {
             "PlayerControllerCreateView",
             "PlayerControllerSelectPane",
             "PlayerActivityCreateStackedNavigationHolder",
+            "PlayerActivityRoot",
+            "PlayerActivityBehaviorField",
             "StackedNavigationMenuOnMeasure",
             "LyricsFragmentOnResume",
             "LyricsChromeAnimate",
@@ -145,9 +147,12 @@ class DualPaneStructuralRegressionTest {
     fun `lets the native stacked holder own mini player content geometry`() {
         assertFalse(source.contains("hookTabletMiniPlayerLayout"))
         assertFalse(source.contains("StackedMiniPlayerLayout"))
-        assertFalse(source.contains("MINI_PLAYER_CONTENT"))
+        assertFalse(source.contains("val miniPlayerId = root.resources.getIdentifier(\"mini_player\", \"id\", ModuleConstants.TARGET_PACKAGE)"))
+        assertFalse(source.contains("decision.miniPlayerVisible"))
+        assertFalse(source.contains("alpha = 1f"))
         assertFalse(source.contains("centerContentInParent"))
         assertFalse(source.contains("AMENH-MINI-PROBE"))
+        assertFalse(source.contains("miniPlayer.visibility = View.GONE"))
     }
 
     @Test
@@ -167,11 +172,12 @@ class DualPaneStructuralRegressionTest {
     }
 
     @Test
-    fun `limits flat player boundary sync to a wide effective or physical display`() {
+    fun `limits flat player boundary sync to wide displays`() {
         assertTrue(source.contains("installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)"))
         assertTrue(source.contains("if (!FlatLandscapeWindowPolicy.shouldInstallBoundarySync(root.context)) return"))
         assertTrue(source.contains("display.getRealMetrics(metrics)"))
         assertTrue(source.contains("physicalWidthPx = metrics?.widthPixels ?: 0"))
+        assertFalse(source.contains("appleMusicFlatPlayerBoundaryMode(targetBuild(context))"))
         assertTrue(source.contains("params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context))"))
         assertTrue(source.contains("FlatPlayerBoundaryPolicy.decide"))
         assertTrue(source.contains("sheet.getLocationInWindow(sheetLocation)"))
@@ -189,6 +195,10 @@ class DualPaneStructuralRegressionTest {
         assertTrue(source.contains("installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)"))
         assertTrue(source.contains("val desiredTabsVisibility = if (decision.tabsVisible) View.VISIBLE else View.INVISIBLE"))
         assertTrue(source.contains("tabsFrame.visibility = desiredTabsVisibility"))
+        assertFalse(source.contains("miniPlayerId"))
+        assertFalse(source.contains("decision.miniPlayerVisible"))
+        assertFalse(source.contains("miniPlayerVisibilityChanged"))
+        assertTrue(source.contains("sheetOverlapsTabs"))
     }
 
     @Test
@@ -254,7 +264,7 @@ class DualPaneStructuralRegressionTest {
 
     @Test
     fun `uses the same BaseActivity root as the modified PlayerActivity`() {
-        assertTrue(source.contains("ModernXposedRuntime.callMethod(activity, \"n0\")"))
+        assertTrue(source.contains("rootMethod.apply { isAccessible = true }.invoke(activity) as? View"))
         assertFalse(source.contains("installForExpandedActivityRoot"))
         assertFalse(source.contains("playerRootFromActivity"))
     }
@@ -262,9 +272,17 @@ class DualPaneStructuralRegressionTest {
     @Test
     fun `returns the official stacked holder before the flat holder can be constructed`() {
         assertTrue(source.contains("AppleMusicSymbols.PlayerActivityCreateStackedNavigationHolder"))
-        assertTrue(source.contains("installNativeStackedNavigationHolderHook(activityResolution.valueOrNull())"))
-        assertTrue(source.contains("nested.simpleName == \"StackedBottomNavigationHolder\""))
+        assertTrue(source.contains("AppleMusicSymbols.PlayerActivityRoot"))
+        assertTrue(source.contains("AppleMusicSymbols.PlayerActivityBehaviorField"))
+        assertTrue(source.contains("activityRootResolution.valueOrNull()"))
+        assertTrue(source.contains("behaviorFieldResolution.valueOrNull()"))
+        assertFalse(source.contains("findField(activityClass, \"c1\")"))
+        assertFalse(source.contains("ModernXposedRuntime.callMethod(activity, \"n0\")"))
+        assertFalse(source.contains("com.apple.android.music.player.PlayerBottomSheetBehavior"))
+        assertTrue(source.contains("behaviorField.type"))
+        assertTrue(source.contains("it.simpleName == \"StackedBottomNavigationHolder\""))
         assertTrue(source.contains("override fun beforeHookedMethod(param: MethodHookParam)"))
+        assertTrue(source.contains("activity.findViewById<View>(id)"))
         assertTrue(source.contains("constructor.newInstance(activity, navigationRoot, behavior)"))
         assertTrue(source.contains("param.result = stackedHolder"))
         assertTrue(source.contains("if (!TabletModeQualifier.isEligible(activity)) return"))

@@ -55,11 +55,27 @@ class FlatPlayerBoundaryPolicyTest {
     }
 
     @Test
-    fun `expanded sheet remains inert before an overlap has been observed`() {
+    fun `expanded sheet remains native before a reservation is observed`() {
         val decision = FlatPlayerBoundaryPolicy.decide(
             rootHeight = 1080,
             sheetTop = 0,
             sheetBottom = 1080,
+            tabsTop = 954,
+            tabsHeight = 126,
+            wasNavigationSpaceReserved = false,
+        )
+
+        assertFalse(decision.reserveNavigationSpace)
+        assertEquals(0, decision.bottomMargin)
+        assertTrue(decision.tabsVisible)
+    }
+
+    @Test
+    fun `expanded sheet stays visible when it does not cover the navigation area`() {
+        val decision = FlatPlayerBoundaryPolicy.decide(
+            rootHeight = 1080,
+            sheetTop = 0,
+            sheetBottom = 900,
             tabsTop = 954,
             tabsHeight = 126,
             wasNavigationSpaceReserved = false,
