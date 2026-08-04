@@ -940,6 +940,7 @@ internal object FlatPlayerBoundaryPolicy {
         sheetBottom: Int,
         tabsTop: Int,
         tabsHeight: Int,
+        navigationInset: Int,
         wasNavigationSpaceReserved: Boolean,
     ): FlatPlayerBoundaryDecision {
         require(rootHeight > 0) { "rootHeight must be positive" }
@@ -951,7 +952,7 @@ internal object FlatPlayerBoundaryPolicy {
         val reserveNavigationSpace = wasNavigationSpaceReserved || collapsedOverlap
         return FlatPlayerBoundaryDecision(
             reserveNavigationSpace = reserveNavigationSpace,
-            bottomMargin = if (!expanded && reserveNavigationSpace) tabsHeight else 0,
+            bottomMargin = if (!expanded && reserveNavigationSpace) navigationInset else 0,
             // Let the native holder own an expanded transition until the
             // collapsed geometry has established a navigation reservation.
             tabsVisible = !reserveNavigationSpace || !expanded,
@@ -1096,8 +1097,14 @@ private object ConstraintLayoutPane {
                 configureTabsContent(bottomNavigation)
             }
             configureTabsTopShadow(topShadow)
-            configurePlayerContainer(playerContainer, tabsHeight, root.context)
-            installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)
+            configurePlayerContainer(playerContainer, tabsHeight, menuHeight, root.context)
+            installFlatPlayerBoundarySync(
+                root,
+                playerContainer,
+                tabsFrame,
+                tabsHeight,
+                (tabsHeight - menuHeight).coerceAtLeast(0),
+            )
             installTabsDivider(tabsFrame, resources)
 
             root.setTag(R.id.am_enhancer_dual_pane_state, BottomNavigationLandscapeInstalled)
@@ -1232,12 +1239,17 @@ private object ConstraintLayoutPane {
         topShadow.requestLayout()
     }
 
-    private fun configurePlayerContainer(playerContainer: View, tabsHeight: Int, context: Context) {
+    private fun configurePlayerContainer(
+        playerContainer: View,
+        tabsHeight: Int,
+        menuHeight: Int,
+        context: Context,
+    ) {
         val params = constraintMarginParams(playerContainer, PLAYER_CONTAINER)
         params.width = ViewGroup.LayoutParams.MATCH_PARENT
         params.height = ViewGroup.LayoutParams.MATCH_PARENT
         params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context)) {
-            tabsHeight
+            (tabsHeight - menuHeight).coerceAtLeast(0)
         } else {
             0
         }
@@ -1256,6 +1268,7 @@ private object ConstraintLayoutPane {
         playerContainer: View,
         tabsFrame: View,
         tabsHeight: Int,
+        navigationInset: Int,
     ) {
         if (!FlatLandscapeWindowPolicy.shouldInstallBoundarySync(root.context)) return
         val sheetId = targetId(root.resources, PLAYER_SHEET_CONTAINER)
@@ -1279,6 +1292,7 @@ private object ConstraintLayoutPane {
                 sheetBottom = sheetLocation[1] - rootTop + sheet.height,
                 tabsTop = tabsLocation[1] - rootTop,
                 tabsHeight = tabsHeight,
+                navigationInset = navigationInset,
                 wasNavigationSpaceReserved = reserveNavigationSpace,
             )
             reserveNavigationSpace = decision.reserveNavigationSpace
@@ -1474,6 +1488,7 @@ private object ConstraintLayoutPane {
      */
     fun stackedTabsContainerHeight(context: Context, menuHeight: Int): Int =
         menuHeight + dp(context, STACKED_TABS_VERTICAL_INSET_DP * 2)
+
 
     private fun dp(context: Context, value: Int): Int =
         (value * context.resources.displayMetrics.density + 0.5f).toInt()

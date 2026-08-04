@@ -157,7 +157,7 @@ class DualPaneStructuralRegressionTest {
 
     @Test
     fun `lets the native stacked holder own the collapsed player offset`() {
-        assertTrue(source.contains("configurePlayerContainer(playerContainer, tabsHeight, root.context)"))
+        assertTrue(source.contains("configurePlayerContainer(playerContainer, tabsHeight, menuHeight, root.context)"))
         assertTrue(source.contains("FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context)"))
         assertFalse(source.contains("restoreStackedNavigationLayout"))
     }
@@ -173,7 +173,8 @@ class DualPaneStructuralRegressionTest {
 
     @Test
     fun `limits flat player boundary sync to wide displays`() {
-        assertTrue(source.contains("installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)"))
+        assertTrue(source.contains("tabsHeight - menuHeight"))
+        assertTrue(source.contains("navigationInset = navigationInset"))
         assertTrue(source.contains("if (!FlatLandscapeWindowPolicy.shouldInstallBoundarySync(root.context)) return"))
         assertTrue(source.contains("display.getRealMetrics(metrics)"))
         assertTrue(source.contains("physicalWidthPx = metrics?.widthPixels ?: 0"))
@@ -192,7 +193,7 @@ class DualPaneStructuralRegressionTest {
         assertTrue(source.contains("sheet.viewTreeObserver.addOnPreDrawListener"))
         assertTrue(source.contains("removeOnPreDrawListener"))
         assertTrue(source.contains("sheet.addOnAttachStateChangeListener"))
-        assertTrue(source.contains("installFlatPlayerBoundarySync(root, playerContainer, tabsFrame, tabsHeight)"))
+        assertTrue(source.contains("tabsHeight - menuHeight"))
         assertTrue(source.contains("val desiredTabsVisibility = if (decision.tabsVisible) View.VISIBLE else View.INVISIBLE"))
         assertTrue(source.contains("tabsFrame.visibility = desiredTabsVisibility"))
         assertFalse(source.contains("miniPlayerId"))

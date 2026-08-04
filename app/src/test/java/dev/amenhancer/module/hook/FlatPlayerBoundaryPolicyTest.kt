@@ -14,11 +14,12 @@ class FlatPlayerBoundaryPolicyTest {
             sheetBottom = 1080,
             tabsTop = 954,
             tabsHeight = 126,
+            navigationInset = 16,
             wasNavigationSpaceReserved = false,
         )
 
         assertTrue(decision.reserveNavigationSpace)
-        assertEquals(126, decision.bottomMargin)
+        assertEquals(16, decision.bottomMargin)
         assertTrue(decision.tabsVisible)
     }
 
@@ -30,11 +31,12 @@ class FlatPlayerBoundaryPolicyTest {
             sheetBottom = 954,
             tabsTop = 954,
             tabsHeight = 126,
+            navigationInset = 16,
             wasNavigationSpaceReserved = true,
         )
 
         assertTrue(decision.reserveNavigationSpace)
-        assertEquals(126, decision.bottomMargin)
+        assertEquals(16, decision.bottomMargin)
         assertTrue(decision.tabsVisible)
     }
 
@@ -46,6 +48,7 @@ class FlatPlayerBoundaryPolicyTest {
             sheetBottom = 744,
             tabsTop = 744,
             tabsHeight = 56,
+            navigationInset = 16,
             wasNavigationSpaceReserved = false,
         )
 
@@ -62,6 +65,7 @@ class FlatPlayerBoundaryPolicyTest {
             sheetBottom = 1080,
             tabsTop = 954,
             tabsHeight = 126,
+            navigationInset = 16,
             wasNavigationSpaceReserved = false,
         )
 
@@ -78,6 +82,7 @@ class FlatPlayerBoundaryPolicyTest {
             sheetBottom = 900,
             tabsTop = 954,
             tabsHeight = 126,
+            navigationInset = 16,
             wasNavigationSpaceReserved = false,
         )
 
@@ -94,11 +99,63 @@ class FlatPlayerBoundaryPolicyTest {
             sheetBottom = 1080,
             tabsTop = 954,
             tabsHeight = 126,
+            navigationInset = 16,
             wasNavigationSpaceReserved = true,
         )
 
         assertTrue(decision.reserveNavigationSpace)
         assertEquals(0, decision.bottomMargin)
         assertFalse(decision.tabsVisible)
+    }
+
+    @Test
+    fun `collapsed wide sheet reserves only the navigation inset`() {
+        val decision = FlatPlayerBoundaryPolicy.decide(
+            rootHeight = 1440,
+            sheetTop = 1066,
+            sheetBottom = 1296,
+            tabsTop = 1296,
+            tabsHeight = 144,
+            navigationInset = 32,
+            wasNavigationSpaceReserved = true,
+        )
+
+        assertTrue(decision.reserveNavigationSpace)
+        assertEquals(32, decision.bottomMargin)
+        assertTrue(decision.tabsVisible)
+    }
+
+    @Test
+    fun `fresh collapsed overlap uses the dynamic inset`() {
+        val decision = FlatPlayerBoundaryPolicy.decide(
+            rootHeight = 1440,
+            sheetTop = 1178,
+            sheetBottom = 1408,
+            tabsTop = 1296,
+            tabsHeight = 144,
+            navigationInset = 32,
+            wasNavigationSpaceReserved = false,
+        )
+
+        assertTrue(decision.reserveNavigationSpace)
+        assertEquals(32, decision.bottomMargin)
+        assertTrue(decision.tabsVisible)
+    }
+
+    @Test
+    fun `zero navigation inset keeps the detected geometry unchanged`() {
+        val decision = FlatPlayerBoundaryPolicy.decide(
+            rootHeight = 1080,
+            sheetTop = 982,
+            sheetBottom = 1080,
+            tabsTop = 954,
+            tabsHeight = 126,
+            navigationInset = 0,
+            wasNavigationSpaceReserved = false,
+        )
+
+        assertTrue(decision.reserveNavigationSpace)
+        assertEquals(0, decision.bottomMargin)
+        assertTrue(decision.tabsVisible)
     }
 }
