@@ -6,85 +6,31 @@ import org.junit.Test
 
 class FlatLandscapeWindowPolicyTest {
     @Test
-    fun `ordinary sixteen to ten tablet stays outside boundary sync`() {
+    fun `disabled compensation never reserves navigation space`() {
         assertFalse(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 1600,
-                windowHeightDp = 1000,
-                physicalWidthPx = 1600,
-                physicalHeightPx = 1000,
+            FlatLandscapeWindowPolicy.shouldApplyCompensation(
+                isTabletLandscape = true,
+                compensationEnabled = false,
             ),
         )
     }
 
     @Test
-    fun `ordinary four to three tablet stays outside boundary sync`() {
-        assertFalse(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 1600,
-                windowHeightDp = 1200,
-                physicalWidthPx = 1600,
-                physicalHeightPx = 1200,
-            ),
-        )
-    }
-
-    @Test
-    fun `physical wide display keeps boundary sync when system rail narrows window`() {
+    fun `enabled compensation ignores display ratio`() {
         assertTrue(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 1630,
-                windowHeightDp = 1000,
-                physicalWidthPx = 1700,
-                physicalHeightPx = 1000,
+            FlatLandscapeWindowPolicy.shouldApplyCompensation(
+                isTabletLandscape = true,
+                compensationEnabled = true,
             ),
         )
     }
 
     @Test
-    fun `wide effective window keeps boundary sync without physical metrics`() {
-        assertTrue(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 1800,
-                windowHeightDp = 1000,
-                physicalWidthPx = 0,
-                physicalHeightPx = 0,
-            ),
-        )
-    }
-
-    @Test
-    fun `rotated physical dimensions use the same aspect ratio`() {
-        assertTrue(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 1000,
-                windowHeightDp = 600,
-                physicalWidthPx = 1000,
-                physicalHeightPx = 1700,
-            ),
-        )
-    }
-
-    @Test
-    fun `unavailable physical metrics do not enable ordinary tablet sync`() {
+    fun `compensation never bypasses the tablet landscape gate`() {
         assertFalse(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 0,
-                windowHeightDp = 0,
-                physicalWidthPx = 0,
-                physicalHeightPx = 0,
-            ),
-        )
-    }
-
-    @Test
-    fun `verified profile does not bypass ordinary tablet ratio gate`() {
-        assertFalse(
-            FlatLandscapeWindowPolicy.shouldInstallBoundarySync(
-                windowWidthDp = 1413,
-                windowHeightDp = 1000,
-                physicalWidthPx = 1413,
-                physicalHeightPx = 1000,
+            FlatLandscapeWindowPolicy.shouldApplyCompensation(
+                isTabletLandscape = false,
+                compensationEnabled = true,
             ),
         )
     }

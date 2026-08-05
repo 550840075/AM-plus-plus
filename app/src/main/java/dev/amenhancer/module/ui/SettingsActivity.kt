@@ -364,6 +364,15 @@ class SettingsActivity : Activity() {
             })
             addView(insetDivider())
             addView(settingRow(
+                title = "平板底栏补偿",
+                summary = "开启后不再按分辨率判断；更改后需强制停止并重开 Apple Music",
+                checked = settings.navigationCompensationEnabled,
+                enabled = writable,
+            ) { enabled ->
+                store.saveSettings(store.settings().copy(navigationCompensationEnabled = enabled))
+            })
+            addView(insetDivider())
+            addView(settingRow(
                 title = "平板禁用动态视频",
                 summary = "平板横屏时禁用 Editorial Video；普通音乐视频不受影响",
                 checked = settings.disableEditorialVideoOnTablet,

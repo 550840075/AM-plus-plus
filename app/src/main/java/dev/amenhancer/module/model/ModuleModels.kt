@@ -7,6 +7,7 @@ data class ModuleSettings(
     val disableEditorialVideoOnTablet: Boolean = true,
     val phoneLiquidGlassEnabled: Boolean = false,
     val futureBlurEnabled: Boolean = true,
+    val navigationCompensationEnabled: Boolean = false,
     val lyricBlurRadiusOffsetPx: Int = 0,
     val customLyricsEnabled: Boolean = false,
     val fontManifest: LyricsFontManifest = LyricsFontManifest.disabled(),

@@ -91,7 +91,7 @@ class DualPaneStructuralRegressionTest {
         assertTrue(source.contains("PLAYER_CONTAINER"))
         assertTrue(source.contains("NAVIGATION_TABS_HEIGHT"))
         assertTrue(source.contains("constrainFullWidth(params)"))
-        assertTrue(source.contains("params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context))"))
+        assertTrue(source.contains("params.bottomMargin = 0"))
         assertTrue(source.contains("tabsHeight"))
         assertTrue(source.contains("NAVIGATION_TABS_DIVIDER"))
         assertTrue(source.contains("clearLegacyWidthContract(params)"))
@@ -157,34 +157,36 @@ class DualPaneStructuralRegressionTest {
 
     @Test
     fun `lets the native stacked holder own the collapsed player offset`() {
-        assertTrue(source.contains("configurePlayerContainer(playerContainer, tabsHeight, menuHeight, root.context)"))
-        assertTrue(source.contains("FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context)"))
+        assertTrue(source.contains("configurePlayerContainer(playerContainer, root.context)"))
+        assertTrue(source.contains("FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(root.context)"))
         assertFalse(source.contains("restoreStackedNavigationLayout"))
     }
 
     @Test
-    fun `gates flat navigation reservation to tablet landscape aspect ratio`() {
+    fun `gates flat navigation reservation to the explicit compensation switch`() {
         assertTrue(source.contains("internal object FlatLandscapeWindowPolicy"))
-        assertTrue(source.contains("TabletModeQualifier.isOfficialTablet(context)"))
+        assertTrue(source.contains("TabletModeQualifier.isOfficialTabletLandscape(context)"))
         assertTrue(source.contains("configuration.orientation == Configuration.ORIENTATION_LANDSCAPE"))
-        assertTrue(source.contains("height > 0"))
-        assertTrue(source.contains("width.toFloat() / height.toFloat() >= 1.7f"))
+        assertTrue(source.contains("TargetConfigClient.currentSettings().navigationCompensationEnabled"))
+        assertTrue(source.contains("fun shouldApplyCompensation("))
+        assertFalse(source.contains("width.toFloat() / height.toFloat() >= 1.7f"))
     }
 
     @Test
-    fun `limits flat player boundary sync to wide displays`() {
+    fun `limits flat player boundary sync to the compensation switch`() {
         assertTrue(source.contains("tabsHeight - menuHeight"))
         assertTrue(source.contains("navigationInset = navigationInset"))
         assertTrue(source.contains("if (!FlatLandscapeWindowPolicy.shouldInstallBoundarySync(root.context)) return"))
-        assertTrue(source.contains("display.getRealMetrics(metrics)"))
-        assertTrue(source.contains("physicalWidthPx = metrics?.widthPixels ?: 0"))
+        assertFalse(source.contains("display.getRealMetrics(metrics)"))
+        assertFalse(source.contains("physicalWidthPx = metrics?.widthPixels ?: 0"))
         assertFalse(source.contains("appleMusicFlatPlayerBoundaryMode(targetBuild(context))"))
-        assertTrue(source.contains("params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context))"))
         assertTrue(source.contains("FlatPlayerBoundaryPolicy.decide"))
         assertTrue(source.contains("sheet.getLocationInWindow(sheetLocation)"))
         assertTrue(source.contains("tabsFrame.getLocationInWindow(tabsLocation)"))
         assertTrue(source.contains("reserveNavigationSpace = decision.reserveNavigationSpace"))
-        assertTrue(source.contains("params.bottomMargin = desired"))
+        assertTrue(source.contains("val desired = decision.translationY"))
+        assertTrue(source.contains("playerContainer.translationY = desiredTranslation"))
+        assertFalse(source.contains("params.bottomMargin = desired"))
     }
 
     @Test
@@ -200,6 +202,26 @@ class DualPaneStructuralRegressionTest {
         assertFalse(source.contains("decision.miniPlayerVisible"))
         assertFalse(source.contains("miniPlayerVisibilityChanged"))
         assertTrue(source.contains("sheetOverlapsTabs"))
+    }
+
+    @Test
+    fun `compensates by visual translation on the outer player container only`() {
+        assertTrue(source.contains("playerContainer.translationY = desiredTranslation"))
+        assertTrue(source.contains("params.bottomMargin = 0"))
+        assertFalse(source.contains("params.bottomMargin = desired"))
+        assertFalse(source.contains("sheet.translationY"))
+        assertFalse(source.contains("sheet.layoutParams"))
+        assertFalse(source.contains("ValueAnimator"))
+        assertFalse(source.contains("BottomSheetBehavior"))
+    }
+
+    @Test
+    fun `re-asserts compensation against the live view and diagnoses a missing sheet`() {
+        assertTrue(source.contains("playerContainer.translationY != desiredTranslation"))
+        assertFalse(source.contains("lastTranslationY"))
+        assertTrue(source.contains("FlatPlayerBoundaryPolicy.sheetTopRelativeToRoot"))
+        assertTrue(source.contains("containerTranslationY = playerContainer.translationY"))
+        assertTrue(source.contains("flat boundary sync skipped: no player_sheet_container"))
     }
 
     @Test

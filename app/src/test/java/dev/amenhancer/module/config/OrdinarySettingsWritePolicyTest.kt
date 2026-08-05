@@ -105,6 +105,7 @@ class OrdinarySettingsWritePolicyTest {
                 "disable_editorial_video_on_tablet" to false,
                 "phone_liquid_glass_enabled" to true,
                 "future_blur_enabled" to false,
+                "navigation_compensation_enabled" to false,
                 "lyric_blur_radius_offset_px" to 6,
                 "custom_lyrics_enabled" to false,
                 "schema_version" to ModuleConstants.CONFIG_SCHEMA_VERSION,

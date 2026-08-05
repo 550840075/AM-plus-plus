@@ -17,6 +17,10 @@ internal object ModuleSettingsSchema {
             default = false,
         ),
         futureBlurEnabled = values.boolean(KEY_FUTURE_BLUR, default = true),
+        navigationCompensationEnabled = values.boolean(
+            KEY_NAVIGATION_COMPENSATION,
+            default = false,
+        ),
         lyricBlurRadiusOffsetPx = values.number(KEY_LYRIC_BLUR_RADIUS_OFFSET)
             ?.coerceIn(
                 ModuleSettings.MIN_LYRIC_BLUR_RADIUS_OFFSET_PX,
@@ -49,6 +53,7 @@ internal object ModuleSettingsSchema {
             KEY_DISABLE_EDITORIAL_VIDEO_ON_TABLET to settings.disableEditorialVideoOnTablet,
             KEY_PHONE_LIQUID_GLASS to settings.phoneLiquidGlassEnabled,
             KEY_FUTURE_BLUR to settings.futureBlurEnabled,
+            KEY_NAVIGATION_COMPENSATION to settings.navigationCompensationEnabled,
             KEY_LYRIC_BLUR_RADIUS_OFFSET to settings.lyricBlurRadiusOffsetPx.coerceIn(
                 ModuleSettings.MIN_LYRIC_BLUR_RADIUS_OFFSET_PX,
                 ModuleSettings.MAX_LYRIC_BLUR_RADIUS_OFFSET_PX,
@@ -160,6 +165,7 @@ internal object ModuleSettingsSchema {
         KEY_DISABLE_EDITORIAL_VIDEO_ON_TABLET,
         KEY_PHONE_LIQUID_GLASS,
         KEY_FUTURE_BLUR,
+        KEY_NAVIGATION_COMPENSATION,
         KEY_LYRIC_BLUR_RADIUS_OFFSET,
         KEY_CUSTOM_LYRICS_ENABLED,
         KEY_LEGACY_ONLINE_LYRIC_REPLACEMENT,
@@ -183,6 +189,7 @@ internal object ModuleSettingsSchema {
         "disable_editorial_video_on_tablet"
     private const val KEY_PHONE_LIQUID_GLASS = "phone_liquid_glass_enabled"
     private const val KEY_FUTURE_BLUR = "future_blur_enabled"
+    private const val KEY_NAVIGATION_COMPENSATION = "navigation_compensation_enabled"
     private const val KEY_LYRIC_BLUR_RADIUS_OFFSET = "lyric_blur_radius_offset_px"
     private const val KEY_CUSTOM_LYRICS_ENABLED = "custom_lyrics_enabled"
     private const val KEY_LEGACY_ONLINE_LYRIC_REPLACEMENT = "online_lyric_replacement_enabled"
