@@ -206,7 +206,10 @@ private fun productionFeatureInstallationModule(): FeatureInstallationModule {
                 feature = PhoneLiquidGlassFeature(),
                 registerResources = PhoneLiquidGlassResourceHook::install,
             ),
-            FeatureInstallationPlan(feature = FutureLyricBlurFeature()),
+            FeatureInstallationPlan(
+                feature = FutureLyricBlurFeature(),
+                registerResources = { LyricCreditsRowResourceHook.install() },
+            ),
             FeatureInstallationPlan(
                 feature = LyricsTypefaceFeature(),
                 registerResources = lyricsTypefaceSession::registerResources,

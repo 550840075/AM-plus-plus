@@ -235,10 +235,15 @@ internal class OpenSourceLyricBlurPort(
         val rv = getRv() as? ViewGroup ?: return
         val visibleRows = ArrayList<Pair<View, Int>>(rv.childCount)
         val instrumentalRows = ArrayList<Pair<View, Int>>(1)
+        val creditsRows = ArrayList<Pair<View, Int>>(2)
 
         for (i in 0 until rv.childCount) {
             val child = rv.getChildAt(i) ?: continue
             val adapterPos = targetAccess.adapterPosition(child)
+            if (targetAccess.isCreditsRow(child)) {
+                creditsRows += child to adapterPos
+                continue
+            }
             if (targetAccess.isInstrumentalRow(child)) {
                 instrumentalRows += child to adapterPos
                 continue
@@ -260,7 +265,15 @@ internal class OpenSourceLyricBlurPort(
             gapAnchorPosition = gapAnchorPosition,
         )
         val useTabletEdges = TabletModeQualifier.isEligible(rv.context)
-        val targets = LinkedHashMap<View, Float>(visibleRows.size)
+        val targets = LinkedHashMap<View, Float>(visibleRows.size + creditsRows.size)
+        var lastLyricFocusBlur = if (includeFocus) {
+            BidirectionalBlurPolicy.applyRadiusOffset(
+                radius = BidirectionalBlurPolicy.MAX_BLUR_RADIUS,
+                offsetPx = blurRadiusOffsetPx,
+            )
+        } else {
+            0f
+        }
         visibleRows.forEach { (child, adapterPos) ->
             val focusBlur = if (includeFocus) {
                 BidirectionalBlurPolicy.applyRadiusOffset(
@@ -270,6 +283,7 @@ internal class OpenSourceLyricBlurPort(
             } else {
                 0f
             }
+            lastLyricFocusBlur = focusBlur
             val edgeBlur = if (useTabletEdges) {
                 TabletLyricVisualPolicy.edgeBlurRadius(
                     rowCenterPx = (child.top + child.bottom) / 2f,
@@ -282,6 +296,22 @@ internal class OpenSourceLyricBlurPort(
                 focusBlurRadius = focusBlur,
                 edgeBlurRadius = edgeBlur,
                 isHighlighted = includeFocus && adapterPos in effectiveIds,
+            )
+        }
+        creditsRows.forEach { (child, _) ->
+            val focusBlur = if (includeFocus) lastLyricFocusBlur else 0f
+            val edgeBlur = if (useTabletEdges) {
+                TabletLyricVisualPolicy.edgeBlurRadius(
+                    rowCenterPx = (child.top + child.bottom) / 2f,
+                    viewportHeightPx = rv.height.toFloat(),
+                )
+            } else {
+                0f
+            }
+            targets[child] = TabletLyricVisualPolicy.mergeBlurRadius(
+                focusBlurRadius = focusBlur,
+                edgeBlurRadius = edgeBlur,
+                isHighlighted = false,
             )
         }
         instrumentalRows.forEach { (view, _) -> blurRenderer.clear(view) }
@@ -321,5 +351,6 @@ internal interface LyricBlurRuntime {
 internal interface LyricBlurTargetAccess {
     fun isRecyclerView(view: View): Boolean
     fun isInstrumentalRow(view: View): Boolean
+    fun isCreditsRow(view: View): Boolean
     fun adapterPosition(view: View): Int
 }

@@ -5,9 +5,10 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 internal object BidirectionalBlurPolicy {
-    private const val BLUR_MAX = 22f
-    private val PAST_RADII_BY_DISTANCE = floatArrayOf(0f, 13f, 17f, BLUR_MAX)
-    private val FUTURE_RADII_BY_DISTANCE = floatArrayOf(0f, 8f, 13f, 17f, BLUR_MAX)
+    /** Largest radius any visible lyric row may receive; credits fall back to it only when no lyric row is visible. */
+    const val MAX_BLUR_RADIUS = 22f
+    private val PAST_RADII_BY_DISTANCE = floatArrayOf(0f, 13f, 17f, MAX_BLUR_RADIUS)
+    private val FUTURE_RADII_BY_DISTANCE = floatArrayOf(0f, 8f, 13f, 17f, MAX_BLUR_RADIUS)
     const val TRANSITION_DURATION_MS = 300L
 
     fun resolveDisplayHighlights(
@@ -56,7 +57,7 @@ internal object BidirectionalBlurPolicy {
     }
 
     fun targetRadius(position: Int, highlighted: Set<Int>): Float {
-        if (highlighted.isEmpty()) return BLUR_MAX
+        if (highlighted.isEmpty()) return MAX_BLUR_RADIUS
         if (position in highlighted) return 0f
         return highlighted.minOf { highlightedPosition ->
             val offset = position - highlightedPosition
@@ -65,7 +66,7 @@ internal object BidirectionalBlurPolicy {
             } else {
                 FUTURE_RADII_BY_DISTANCE
             }
-            radii.getOrElse(abs(offset)) { BLUR_MAX }
+            radii.getOrElse(abs(offset)) { MAX_BLUR_RADIUS }
         }
     }
 

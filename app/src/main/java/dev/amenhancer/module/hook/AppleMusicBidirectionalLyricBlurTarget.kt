@@ -239,6 +239,8 @@ internal class AppleMusicLyricBlurTargetAccess(
 
     override fun isInstrumentalRow(view: View): Boolean = InstrumentalRowIdentity.matches(view)
 
+    override fun isCreditsRow(view: View): Boolean = CreditsRowIdentity.matches(view)
+
     override fun adapterPosition(view: View): Int = try {
         (adapterPositionAccessor?.invoke(null, view) as? Int) ?: -1
     } catch (_: Throwable) {
