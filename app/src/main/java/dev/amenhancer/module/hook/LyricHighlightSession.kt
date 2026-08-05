@@ -6,6 +6,11 @@ internal class LyricHighlightSession {
     private val highlightedLineIds = mutableSetOf<Int>()
     private val completedOverlapLineIds = mutableSetOf<Int>()
     private var gap = false
+    private var openingHighlight = false
+
+    // Explicit "first non-empty highlight since enter" state; the highlighted set alone
+    // would conflate "never highlighted" with "set empty at this moment".
+    private var hasReceivedNonEmptyHighlight = false
 
     @Synchronized
     fun enter(newToken: Any): Boolean {
@@ -14,6 +19,8 @@ internal class LyricHighlightSession {
         highlightedLineIds.clear()
         completedOverlapLineIds.clear()
         gap = false
+        openingHighlight = false
+        hasReceivedNonEmptyHighlight = false
         return true
     }
 
@@ -25,6 +32,12 @@ internal class LyricHighlightSession {
         }
         gap = false
         if (incoming == highlightedLineIds) return snapshotLocked()
+        if (!hasReceivedNonEmptyHighlight) {
+            hasReceivedNonEmptyHighlight = true
+            openingHighlight = true
+        } else {
+            openingHighlight = false
+        }
         val completedOverlap = if (
             highlightedLineIds.size > 1 && highlightedLineIds.containsAll(incoming)
         ) {
@@ -45,6 +58,17 @@ internal class LyricHighlightSession {
     @Synchronized
     fun replace(lineId: Int) {
         gap = false
+        val isRepeat = highlightedLineIds.size == 1 &&
+            completedOverlapLineIds.isEmpty() &&
+            highlightedLineIds.contains(lineId)
+        if (!isRepeat) {
+            if (!hasReceivedNonEmptyHighlight) {
+                hasReceivedNonEmptyHighlight = true
+                openingHighlight = true
+            } else {
+                openingHighlight = false
+            }
+        }
         completedOverlapLineIds.clear()
         highlightedLineIds.clear()
         highlightedLineIds.add(lineId)
@@ -55,6 +79,9 @@ internal class LyricHighlightSession {
 
     @Synchronized
     fun isGap(): Boolean = gap
+
+    @Synchronized
+    fun isOpeningHighlight(): Boolean = openingHighlight
 
     private fun snapshotLocked(): Set<Int> = highlightedLineIds + completedOverlapLineIds
 }

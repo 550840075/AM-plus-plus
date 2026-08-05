@@ -28,10 +28,25 @@ internal object BidirectionalBlurPolicy {
     fun selectInstrumentalGapAnchor(
         active: Set<Int>,
         isGap: Boolean,
+        isOpeningHighlight: Boolean,
         instrumentalPositions: List<Int>,
+        visiblePositions: List<Int>,
     ): Int {
-        if (active.isNotEmpty() && !isGap) return -1
         val referencePosition = active.maxOrNull()
+        if (active.isNotEmpty() && !isGap) {
+            if (!isOpeningHighlight) return -1
+            val earliestVisible = visiblePositions
+                .asSequence()
+                .filter { position -> position >= 0 }
+                .minOrNull()
+                ?: return -1
+            if (!active.contains(earliestVisible)) return -1
+            return instrumentalPositions
+                .asSequence()
+                .filter { position -> position >= 0 && position < earliestVisible }
+                .maxOrNull()
+                ?: -1
+        }
         return instrumentalPositions
             .asSequence()
             .filter { position -> position >= 0 }
