@@ -365,7 +365,7 @@ class SettingsActivity : Activity() {
             addView(insetDivider())
             addView(settingRow(
                 title = "平板底栏补偿",
-                summary = "开启后不再按分辨率判断；更改后需强制停止并重开 Apple Music",
+                summary = "如果底栏显示异常开启该选项",
                 checked = settings.navigationCompensationEnabled,
                 enabled = writable,
             ) { enabled ->
