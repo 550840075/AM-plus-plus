@@ -250,7 +250,9 @@ internal class OpenSourceLyricBlurPort(
         val gapAnchorPosition = BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
             active = activeIds,
             isGap = highlightSession.isGap(),
+            isOpeningHighlight = highlightSession.isOpeningHighlight(),
             instrumentalPositions = instrumentalRows.map { (_, position) -> position },
+            visiblePositions = visibleRows.map { (_, position) -> position },
         )
         val effectiveIds = BidirectionalBlurPolicy.resolveDisplayHighlights(
             active = activeIds,

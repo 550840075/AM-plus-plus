@@ -113,6 +113,99 @@ class LyricHighlightSessionTest {
     }
 
     @Test
+    fun `initial empty callbacks do not count as the opening highlight`() {
+        val session = LyricHighlightSession()
+        val song = Any()
+
+        assertTrue(session.enter(song))
+        assertFalse(session.isOpeningHighlight())
+        session.update(emptySet())
+        assertFalse(session.isOpeningHighlight())
+        session.update(emptySet())
+        assertFalse(session.isOpeningHighlight())
+    }
+
+    @Test
+    fun `the first non-empty update marks the opening highlight`() {
+        val session = LyricHighlightSession()
+
+        session.update(emptySet())
+        assertFalse(session.isOpeningHighlight())
+
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+    }
+
+    @Test
+    fun `repeating the first snapshot keeps the opening highlight`() {
+        val session = LyricHighlightSession()
+
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+
+        session.update(emptySet())
+        assertTrue(session.isOpeningHighlight())
+
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+    }
+
+    @Test
+    fun `the next distinct snapshot clears the opening highlight`() {
+        val session = LyricHighlightSession()
+
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+
+        session.update(setOf(47))
+        assertFalse(session.isOpeningHighlight())
+    }
+
+    @Test
+    fun `fallback replacement as the first highlight marks the opening`() {
+        val session = LyricHighlightSession()
+
+        session.update(emptySet())
+        session.replace(47)
+        assertTrue(session.isOpeningHighlight())
+
+        session.replace(47)
+        assertTrue(session.isOpeningHighlight())
+    }
+
+    @Test
+    fun `fallback replacement after a real highlight clears the opening`() {
+        val session = LyricHighlightSession()
+
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+
+        session.replace(47)
+        assertFalse(session.isOpeningHighlight())
+    }
+
+    @Test
+    fun `entering another song resets the opening highlight`() {
+        val session = LyricHighlightSession()
+        val firstSong = Any()
+        val nextSong = Any()
+
+        session.enter(firstSong)
+        session.update(setOf(46))
+        assertTrue(session.isOpeningHighlight())
+
+        assertTrue(session.enter(nextSong))
+        assertFalse(session.isOpeningHighlight())
+        session.update(emptySet())
+        assertFalse(session.isOpeningHighlight())
+        session.update(setOf(1))
+        assertTrue(session.isOpeningHighlight())
+    }
+
+    @Test
     fun `song boundaries use pointer identity rather than value equality`() {
         val session = LyricHighlightSession()
         val firstWrapper = EqualToken(7)

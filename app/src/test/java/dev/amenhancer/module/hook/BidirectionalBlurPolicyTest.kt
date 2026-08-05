@@ -49,7 +49,9 @@ class BidirectionalBlurPolicyTest {
             BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
                 active = emptySet(),
                 isGap = false,
+                isOpeningHighlight = false,
                 instrumentalPositions = listOf(0),
+                visiblePositions = emptyList(),
             ),
         )
         assertEquals(
@@ -57,7 +59,9 @@ class BidirectionalBlurPolicyTest {
             BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
                 active = setOf(4),
                 isGap = true,
+                isOpeningHighlight = false,
                 instrumentalPositions = listOf(5),
+                visiblePositions = listOf(3, 4, 6),
             ),
         )
         assertEquals(
@@ -65,7 +69,76 @@ class BidirectionalBlurPolicyTest {
             BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
                 active = setOf(4),
                 isGap = false,
+                isOpeningHighlight = false,
                 instrumentalPositions = listOf(5),
+                visiblePositions = listOf(3, 4, 6),
+            ),
+        )
+    }
+
+    @Test
+    fun `opening highlight before the earliest visible lyric anchors the three-dot intro`() {
+        assertEquals(
+            0,
+            BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
+                active = setOf(1),
+                isGap = false,
+                isOpeningHighlight = true,
+                instrumentalPositions = listOf(0),
+                visiblePositions = listOf(1, 2, 3),
+            ),
+        )
+        assertEquals(
+            -1,
+            BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
+                active = setOf(1),
+                isGap = false,
+                isOpeningHighlight = true,
+                instrumentalPositions = emptyList(),
+                visiblePositions = listOf(1, 2, 3),
+            ),
+        )
+    }
+
+    @Test
+    fun `interlude geometry alone never anchors a mid-song first line`() {
+        assertEquals(
+            -1,
+            BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
+                active = setOf(9),
+                isGap = false,
+                isOpeningHighlight = false,
+                instrumentalPositions = listOf(8),
+                visiblePositions = listOf(9, 10, 11),
+            ),
+        )
+    }
+
+    @Test
+    fun `opening state alone never anchors when the active line is not earliest visible`() {
+        assertEquals(
+            -1,
+            BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
+                active = setOf(11),
+                isGap = false,
+                isOpeningHighlight = true,
+                instrumentalPositions = listOf(8),
+                visiblePositions = listOf(9, 10, 11),
+            ),
+        )
+    }
+
+    @Test
+    fun `mid-song instrumentals never anchor a non-gap active highlight`() {
+        assertEquals(
+            -1,
+            BidirectionalBlurPolicy.selectInstrumentalGapAnchor(
+                active = setOf(13),
+                isGap = false,
+                isOpeningHighlight = false,
+                instrumentalPositions = listOf(12),
+                // Visible lyric rows exclude the instrumental row (see applyBlur partitioning).
+                visiblePositions = listOf(13, 14, 15),
             ),
         )
     }

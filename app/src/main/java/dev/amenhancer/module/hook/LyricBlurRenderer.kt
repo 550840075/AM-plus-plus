@@ -71,7 +71,6 @@ internal class LyricBlurRenderer {
     fun clear(view: View) {
         transitions.remove(view)
         view.setRenderEffect(null)
-        view.alpha = 1f
     }
 
     fun clearAll() {
