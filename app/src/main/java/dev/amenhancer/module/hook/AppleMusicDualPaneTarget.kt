@@ -4,14 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
-import android.view.WindowManager
 import android.widget.FrameLayout
 import dev.amenhancer.module.hook.ModernMethodHook as XC_MethodHook
 import dev.amenhancer.module.ModuleConstants
@@ -860,78 +857,44 @@ internal object TabletModeQualifier {
 }
 
 internal object FlatLandscapeWindowPolicy {
-    private const val MIN_ULTRAWIDE_RATIO_NUMERATOR = 17L
-    private const val MIN_ULTRAWIDE_RATIO_DENOMINATOR = 10L
-
     fun shouldReserveNavigationSpace(context: Context): Boolean {
-        val configuration = context.resources.configuration
-        val width = configuration.screenWidthDp
-        val height = configuration.screenHeightDp
-        return TabletModeQualifier.isOfficialTablet(context) &&
-            configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
-            height > 0 &&
-            width.toFloat() / height.toFloat() >= 1.7f
+        return shouldApplyCompensation(
+            isTabletLandscape = TabletModeQualifier.isOfficialTabletLandscape(context),
+            compensationEnabled = TargetConfigClient.currentSettings().navigationCompensationEnabled,
+        )
     }
 
-    /**
-     * Observe the real sheet/tabs boundary only for wide displays. Ordinary
-     * tablets keep the v1.2.1 native holder geometry unchanged.
-     */
     fun shouldInstallBoundarySync(context: Context): Boolean {
-        if (!TabletModeQualifier.isOfficialTabletLandscape(context)) return false
-        val configuration = context.resources.configuration
-        val metrics = realDisplayMetrics(context)
-        val enabled = shouldInstallBoundarySync(
-            windowWidthDp = configuration.screenWidthDp,
-            windowHeightDp = configuration.screenHeightDp,
-            physicalWidthPx = metrics?.widthPixels ?: 0,
-            physicalHeightPx = metrics?.heightPixels ?: 0,
+        val enabled = shouldApplyCompensation(
+            isTabletLandscape = TabletModeQualifier.isOfficialTabletLandscape(context),
+            compensationEnabled = TargetConfigClient.currentSettings().navigationCompensationEnabled,
         )
         debug("flat boundary gate enabled=$enabled")
         return enabled
     }
 
-    internal fun shouldInstallBoundarySync(
-        windowWidthDp: Int,
-        windowHeightDp: Int,
-        physicalWidthPx: Int,
-        physicalHeightPx: Int,
-    ): Boolean = isUltraWideRatio(windowWidthDp, windowHeightDp) ||
-        isUltraWideRatio(physicalWidthPx, physicalHeightPx)
-
-    private fun isUltraWideRatio(width: Int, height: Int): Boolean {
-        if (width <= 0 || height <= 0) return false
-        val longSide = maxOf(width, height).toLong()
-        val shortSide = minOf(width, height).toLong()
-        return longSide * MIN_ULTRAWIDE_RATIO_DENOMINATOR >=
-            shortSide * MIN_ULTRAWIDE_RATIO_NUMERATOR
-    }
-
-    @Suppress("DEPRECATION")
-    private fun realDisplayMetrics(context: Context): DisplayMetrics? {
-        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            context.display
-        } else {
-            @Suppress("DEPRECATION")
-            (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay
-        } ?: return null
-        return runCatching {
-            DisplayMetrics().also { metrics -> display.getRealMetrics(metrics) }
-        }.getOrNull()
-    }
+    internal fun shouldApplyCompensation(
+        isTabletLandscape: Boolean,
+        compensationEnabled: Boolean,
+    ): Boolean = isTabletLandscape && compensationEnabled
 }
 
 internal data class FlatPlayerBoundaryDecision(
     val reserveNavigationSpace: Boolean,
-    val bottomMargin: Int,
+    val translationY: Int,
     val tabsVisible: Boolean,
 )
 
 /**
- * Keeps the eager ultra-wide hint, but also learns from the actual flat-player
- * geometry. Projection side rails can make a physical 17:10 display report an
- * activity viewport below the 1.7 ratio even though its collapsed sheet still
- * uses the no-tabs offset.
+ * Phase 109 settled visual compensation: expanded always settles at
+ * translationY 0, a settled collapsed sheet settles at exactly
+ * -navigationInset. The decision stays binary on `expanded` (sheetTop <=
+ * rootHeight / 2) on purpose: the collapsed peek geometry is owned by
+ * Apple's holder and is not measurable here, so no continuous
+ * sheetTop-to-collapsed mapping could be verified. It is applied as visual
+ * translationY only, never as layout margin, so the full-screen sheet keeps
+ * its geometry (no black strip) and the native holder's animation targets
+ * are untouched.
  */
 internal object FlatPlayerBoundaryPolicy {
     fun decide(
@@ -952,12 +915,29 @@ internal object FlatPlayerBoundaryPolicy {
         val reserveNavigationSpace = wasNavigationSpaceReserved || collapsedOverlap
         return FlatPlayerBoundaryDecision(
             reserveNavigationSpace = reserveNavigationSpace,
-            bottomMargin = if (!expanded && reserveNavigationSpace) navigationInset else 0,
+            // Expanded is the settled zero; a reserved collapsed sheet
+            // settles at the negative navigation inset. The reservation
+            // latch makes the collapsed state sticky so the binary flip
+            // cannot oscillate around the midpoint.
+            translationY = if (!expanded && reserveNavigationSpace) -navigationInset else 0,
             // Let the native holder own an expanded transition until the
             // collapsed geometry has established a navigation reservation.
             tabsVisible = !reserveNavigationSpace || !expanded,
         )
     }
+
+    /**
+     * Root-relative sheet top from window-space measurements, excluding the
+     * visual translation the module applies to the outer player container.
+     * getLocationInWindow includes ancestor translations, so without this
+     * correction the compensation itself would move the measured sheet top
+     * and flip the binary decision back and forth around the midpoint.
+     */
+    fun sheetTopRelativeToRoot(
+        sheetWindowTop: Int,
+        rootWindowTop: Int,
+        containerTranslationY: Float,
+    ): Int = sheetWindowTop - rootWindowTop - containerTranslationY.roundToInt()
 }
 
 internal object DualPaneShell {
@@ -1097,7 +1077,7 @@ private object ConstraintLayoutPane {
                 configureTabsContent(bottomNavigation)
             }
             configureTabsTopShadow(topShadow)
-            configurePlayerContainer(playerContainer, tabsHeight, menuHeight, root.context)
+            configurePlayerContainer(playerContainer, root.context)
             installFlatPlayerBoundarySync(
                 root,
                 playerContainer,
@@ -1241,18 +1221,16 @@ private object ConstraintLayoutPane {
 
     private fun configurePlayerContainer(
         playerContainer: View,
-        tabsHeight: Int,
-        menuHeight: Int,
         context: Context,
     ) {
         val params = constraintMarginParams(playerContainer, PLAYER_CONTAINER)
         params.width = ViewGroup.LayoutParams.MATCH_PARENT
         params.height = ViewGroup.LayoutParams.MATCH_PARENT
-        params.bottomMargin = if (FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(context)) {
-            (tabsHeight - menuHeight).coerceAtLeast(0)
-        } else {
-            0
-        }
+        // Phase 109: compensation is visual only. Keeping margin 0 preserves
+        // the full-screen sheet geometry, so the native holder's slide
+        // animation targets never change and no black strip appears under
+        // the player.
+        params.bottomMargin = 0
         clearLegacyWidthContract(params)
         constrainFullWidth(params)
         params.setInt("topToTop", PARENT_ID)
@@ -1272,10 +1250,16 @@ private object ConstraintLayoutPane {
     ) {
         if (!FlatLandscapeWindowPolicy.shouldInstallBoundarySync(root.context)) return
         val sheetId = targetId(root.resources, PLAYER_SHEET_CONTAINER)
-        val sheet = sheetId.takeIf { it != 0 }?.let { root.findViewById<View>(it) } ?: return
+        val sheet = sheetId.takeIf { it != 0 }?.let { root.findViewById<View>(it) }
+        if (sheet == null) {
+            debug(
+                "flat boundary sync skipped: no player_sheet_container (id=" + sheetId +
+                    ") under root=" + root.javaClass.name,
+            )
+            return
+        }
         var reserveNavigationSpace =
             FlatLandscapeWindowPolicy.shouldReserveNavigationSpace(root.context)
-        var lastBottomMargin = Int.MIN_VALUE
         val rootLocation = IntArray(2)
         val sheetLocation = IntArray(2)
         val tabsLocation = IntArray(2)
@@ -1286,29 +1270,38 @@ private object ConstraintLayoutPane {
             sheet.getLocationInWindow(sheetLocation)
             tabsFrame.getLocationInWindow(tabsLocation)
             val rootTop = rootLocation[1]
+            // Measure layout geometry, not translated geometry: the window
+            // measurement includes this module's own translationY on the
+            // outer player container, so exclude it to keep the decision
+            // independent of the compensation it produces.
+            val sheetTop = FlatPlayerBoundaryPolicy.sheetTopRelativeToRoot(
+                sheetWindowTop = sheetLocation[1],
+                rootWindowTop = rootTop,
+                containerTranslationY = playerContainer.translationY,
+            )
             val decision = FlatPlayerBoundaryPolicy.decide(
                 rootHeight = rootHeight,
-                sheetTop = sheetLocation[1] - rootTop,
-                sheetBottom = sheetLocation[1] - rootTop + sheet.height,
+                sheetTop = sheetTop,
+                sheetBottom = sheetTop + sheet.height,
                 tabsTop = tabsLocation[1] - rootTop,
                 tabsHeight = tabsHeight,
                 navigationInset = navigationInset,
                 wasNavigationSpaceReserved = reserveNavigationSpace,
             )
             reserveNavigationSpace = decision.reserveNavigationSpace
-            val desired = decision.bottomMargin
+            val desired = decision.translationY
+            val desiredTranslation = desired.toFloat()
+            val translationChanged = playerContainer.translationY != desiredTranslation
             val desiredTabsVisibility = if (decision.tabsVisible) View.VISIBLE else View.INVISIBLE
             val tabsVisibilityChanged = tabsFrame.visibility != desiredTabsVisibility
-            if (
-                desired == lastBottomMargin &&
-                !tabsVisibilityChanged
-            ) return
-            lastBottomMargin = desired
-            val params = constraintMarginParams(playerContainer, PLAYER_CONTAINER)
-            if (params.bottomMargin != desired) {
-                params.bottomMargin = desired
-                playerContainer.layoutParams = params
-                playerContainer.requestLayout()
+            if (!translationChanged && !tabsVisibilityChanged) return
+            // Phase 109 review: always compare against the live view property.
+            // If another animation or the holder rewrote the translation,
+            // re-assert the settled expectation instead of trusting a cached
+            // local value. Visual only: translationY never relayouts the tree
+            // and the sheet view itself is never written.
+            if (translationChanged) {
+                playerContainer.translationY = desiredTranslation
             }
             if (tabsVisibilityChanged) tabsFrame.visibility = desiredTabsVisibility
         }

@@ -16,6 +16,7 @@ class ModuleSettingsSchemaTest {
                 disableEditorialVideoOnTablet = true,
                 phoneLiquidGlassEnabled = false,
                 futureBlurEnabled = true,
+                navigationCompensationEnabled = false,
                 lyricBlurRadiusOffsetPx = 0,
                 schemaVersion = ModuleConstants.CONFIG_SCHEMA_VERSION,
             ),
@@ -42,6 +43,7 @@ class ModuleSettingsSchemaTest {
                 "disable_editorial_video_on_tablet" to false,
                 "phone_liquid_glass_enabled" to true,
                 "future_blur_enabled" to false,
+                "navigation_compensation_enabled" to false,
                 "lyric_blur_radius_offset_px" to 6,
                 "custom_lyrics_enabled" to false,
                 "lyrics_font_enabled" to false,
@@ -72,6 +74,7 @@ class ModuleSettingsSchemaTest {
                 "disable_editorial_video_on_tablet" to true,
                 "phone_liquid_glass_enabled" to true,
                 "future_blur_enabled" to true,
+                "navigation_compensation_enabled" to false,
                 "lyric_blur_radius_offset_px" to 0,
                 "custom_lyrics_enabled" to false,
                 "lyrics_font_enabled" to false,
@@ -132,6 +135,7 @@ class ModuleSettingsSchemaTest {
                 disableEditorialVideoOnTablet = false,
                 phoneLiquidGlassEnabled = false,
                 futureBlurEnabled = false,
+                navigationCompensationEnabled = false,
                 lyricBlurRadiusOffsetPx = 0,
                 schemaVersion = ModuleConstants.CONFIG_SCHEMA_VERSION,
             ),
@@ -185,6 +189,22 @@ class ModuleSettingsSchemaTest {
         assertEquals(
             true,
             ModuleSettingsSchema.decode(encoded).customLyricsEnabled,
+        )
+    }
+
+    @Test
+    fun `navigation compensation defaults off and round trips`() {
+        assertEquals(
+            false,
+            ModuleSettingsSchema.decode(emptyMap<String, Any?>()).navigationCompensationEnabled,
+        )
+        val encoded = ModuleSettingsSchema.encodeOrdinarySettings(
+            ModuleSettings(navigationCompensationEnabled = true),
+        )
+        assertEquals(true, encoded["navigation_compensation_enabled"])
+        assertEquals(
+            true,
+            ModuleSettingsSchema.decode(encoded).navigationCompensationEnabled,
         )
     }
 
