@@ -268,7 +268,5 @@ assembleRelease
 ## 致谢
 
 - [AMLyricBlur](https://github.com/a23bc/amlyricblur)：双向歌词模糊核心的移植来源。
-- [BlurView](https://github.com/Dimezis/BlurView)：手机液态玻璃使用的模糊组件。
-- [Best-README-Template](https://github.com/othneildrew/Best-README-Template)：README 结构参考。
 
 <p align="right">(<a href="#top">返回顶部</a>)</p>
