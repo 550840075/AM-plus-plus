@@ -2,6 +2,7 @@ package dev.amenhancer.module.lyrics
 
 import dev.amenhancer.module.model.CustomLyricsSources
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,9 +21,10 @@ class CustomLyricsOnlineImporterTest {
         val result = importer.importAmll(42L)
 
         assertEquals(42L, requestedId)
+        assertTrue(result is CustomLyricsOnlineImportResult.Imported)
         assertEquals(
-            CustomLyricsOnlineImportResult.Imported(ttml, CustomLyricsSources.AMLL),
-            result,
+            CustomLyricsSources.AMLL,
+            (result as CustomLyricsOnlineImportResult.Imported).source,
         )
     }
 
@@ -73,5 +75,70 @@ class CustomLyricsOnlineImporterTest {
 
         assertTrue(importer.importAmLyrics(0L) is CustomLyricsOnlineImportResult.Failed)
         assertTrue(importer.importAmLyrics(42L) is CustomLyricsOnlineImportResult.Failed)
+    }
+
+    @Test
+    fun `amll formatted lyrics are reformatted into the apple music format on import`() {
+        val amllFormat = """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+            <head><metadata xmlns=""><ttm:agent type="person" xml:id="v1"/></metadata></head>
+            <body dur="00:03.000"><div xmlns="" begin="00:01.000" end="00:03.000">
+            <p begin="00:01.000" end="00:03.000" ttm:agent="v1" itunes:key="L1">
+            <span begin="00:01.000" end="00:03.000">aa</span>
+            <span ttm:role="x-translation" xml:lang="zh-CN">T1</span>
+            <span ttm:role="x-roman">R1</span>
+            </p></div></body></tt>
+        """.trimIndent()
+        val importer = CustomLyricsOnlineImporter(
+            fetchAmll = { amllFormat },
+            fetchAmLyrics = { error("must not fetch AM-Lyrics") },
+            fetchNeteaseYrc = { error("must not fetch NetEase") },
+        )
+
+        val result = importer.importAmll(42L)
+
+        assertTrue(result is CustomLyricsOnlineImportResult.Imported)
+        val imported = result as CustomLyricsOnlineImportResult.Imported
+        assertTrue(imported.reformatted)
+        assertEquals(CustomLyricsSources.AMLL, imported.source)
+        assertFalse(imported.ttml.contains("xmlns=\"\""))
+        assertFalse(imported.ttml.substringAfter("<body").contains("ttm:role=\"x-translation\""))
+        assertTrue(imported.ttml.substringBefore('>').contains("""itunes:timing="Word""""))
+        assertTrue(imported.ttml.substringBefore('>').contains("""xml:lang="ko""""))
+        assertTrue(
+            imported.ttml.contains(
+                "<translation type=\"subtitle\" xml:lang=\"zh-Hans\"><text for=\"L1\">T1</text>",
+            ),
+        )
+        assertTrue(imported.ttml.contains("<transliteration xml:lang=\"ko-Latn\"><text for=\"L1\">R1</text>"))
+        assertTrue(TtmlInputPolicy.isAcceptable(imported.ttml))
+    }
+
+    @Test
+    fun `apple formatted amll payloads are imported unchanged`() {
+        // Already carries its tracks in the head, so the converter leaves it be.
+        val appleFormat = """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" itunes:timing="Word" xml:lang="ko">
+            <head><metadata><iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+            <translations><translation xml:lang="zh-Hans"><text for="L1">T1</text></translation></translations>
+            </iTunesMetadata></metadata></head>
+            <body><div><p begin="0.0" end="1.0" itunes:key="L1"><span begin="0.0" end="1.0">aa</span></p></div></body></tt>
+        """.trimIndent()
+        val importer = CustomLyricsOnlineImporter(
+            fetchAmll = { appleFormat },
+            fetchAmLyrics = { error("must not fetch AM-Lyrics") },
+            fetchNeteaseYrc = { error("must not fetch NetEase") },
+        )
+
+        val result = importer.importAmll(42L)
+
+        assertEquals(
+            CustomLyricsOnlineImportResult.Imported(
+                appleFormat,
+                CustomLyricsSources.AMLL,
+                reformatted = false,
+            ),
+            result,
+        )
     }
 }
