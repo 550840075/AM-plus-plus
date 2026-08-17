@@ -15,14 +15,14 @@ class ModuleSettingsSchemaTest {
             ModuleSettings(
                 dualPaneEnabled = true,
                 disableEditorialVideoOnTablet = true,
-                phoneLiquidGlassEnabled = false,
+                phoneLiquidGlassEnabled = true,  // ← 改动1：false → true
                 futureBlurEnabled = true,
-                navigationCompensationEnabled = false,
+                navigationCompensationEnabled = true,  // ← 改动2：false → true
                 lyricBlurRadiusOffsetPx = 0,
                 titleCorrectionEnabled = false,
                 schemaVersion = ModuleConstants.CONFIG_SCHEMA_VERSION,
             ),
-            ModuleSettingsSchema.decode(emptyMap<String, Any?>()),
+            ModuleSettingsSchema.decode(emptyMap()),
         )
     }
 
@@ -65,7 +65,7 @@ class ModuleSettingsSchemaTest {
     @Test
     fun `an empty remote store upgrades from legacy values`() {
         val upgraded = ModuleSettingsSchema.upgrade(
-            storedValues = emptyMap<String, Any?>(),
+            storedValues = emptyMap(),
             legacyValues = mapOf(
                 "dual_pane_enabled" to false,
                 "phone_liquid_glass_enabled" to true,
@@ -78,7 +78,7 @@ class ModuleSettingsSchemaTest {
                 "disable_editorial_video_on_tablet" to true,
                 "phone_liquid_glass_enabled" to true,
                 "future_blur_enabled" to true,
-                "navigation_compensation_enabled" to false,
+                "navigation_compensation_enabled" to true,  // ← 改动3：false → true
                 "lyric_blur_radius_offset_px" to 0,
                 "title_correction_enabled" to false,
                 "title_correction_target_language" to "tr-TR",
@@ -139,9 +139,9 @@ class ModuleSettingsSchemaTest {
             ModuleSettings(
                 dualPaneEnabled = true,
                 disableEditorialVideoOnTablet = false,
-                phoneLiquidGlassEnabled = false,
+                phoneLiquidGlassEnabled = true,  // ← 改动4：false → true
                 futureBlurEnabled = false,
-                navigationCompensationEnabled = false,
+                navigationCompensationEnabled = true,  // ← 改动5：false → true
                 lyricBlurRadiusOffsetPx = 0,
                 titleCorrectionEnabled = false,
                 schemaVersion = ModuleConstants.CONFIG_SCHEMA_VERSION,
@@ -180,7 +180,7 @@ class ModuleSettingsSchemaTest {
     fun `custom lyrics defaults to disabled and round trips`() {
         assertEquals(
             false,
-            ModuleSettingsSchema.decode(emptyMap<String, Any?>()).customLyricsEnabled,
+            ModuleSettingsSchema.decode(emptyMap()).customLyricsEnabled,
         )
         assertEquals(
             false,
@@ -203,7 +203,7 @@ class ModuleSettingsSchemaTest {
     fun `title correction defaults off and round trips`() {
         assertEquals(
             false,
-            ModuleSettingsSchema.decode(emptyMap<String, Any?>()).titleCorrectionEnabled,
+            ModuleSettingsSchema.decode(emptyMap()).titleCorrectionEnabled,
         )
         val encoded = ModuleSettingsSchema.encodeOrdinarySettings(
             ModuleSettings(titleCorrectionEnabled = true),
@@ -231,10 +231,10 @@ class ModuleSettingsSchemaTest {
     }
 
     @Test
-    fun `navigation compensation defaults off and round trips`() {
+    fun `navigation compensation defaults on and round trips`() {  // ← 改动6：测试名 off → on
         assertEquals(
-            false,
-            ModuleSettingsSchema.decode(emptyMap<String, Any?>()).navigationCompensationEnabled,
+            true,  // ← 改动6：false → true
+            ModuleSettingsSchema.decode(emptyMap()).navigationCompensationEnabled,
         )
         val encoded = ModuleSettingsSchema.encodeOrdinarySettings(
             ModuleSettings(navigationCompensationEnabled = true),
@@ -253,7 +253,7 @@ class ModuleSettingsSchemaTest {
                 "schema_version" to 5,
                 "online_lyric_replacement_enabled" to true,
             ),
-            legacyValues = emptyMap<String, Any?>(),
+            legacyValues = emptyMap(),
         )
 
         assertEquals(true, upgraded?.get("custom_lyrics_enabled"))
@@ -284,7 +284,7 @@ class ModuleSettingsSchemaTest {
             "custom_lyrics_index_size_bytes" to 4096L,
         )
 
-        assertNull(ModuleSettingsSchema.decodeIndexPointer(emptyMap<String, Any>()))
+        assertNull(ModuleSettingsSchema.decodeIndexPointer(emptyMap()))
         assertNull(ModuleSettingsSchema.decodeIndexPointer(base - "custom_lyrics_index_file_id"))
         assertNull(
             ModuleSettingsSchema.decodeIndexPointer(
@@ -347,7 +347,7 @@ class ModuleSettingsSchemaTest {
                 "modify_locale" to true,
                 "modify_locale_target_tag" to "zh-CN",
             ),
-            legacyValues = emptyMap<String, Any?>(),
+            legacyValues = emptyMap(),
         )
         assertFalse(upgraded!!.containsKey("modify_locale"))
         assertFalse(upgraded.containsKey("modify_locale_target_tag"))
