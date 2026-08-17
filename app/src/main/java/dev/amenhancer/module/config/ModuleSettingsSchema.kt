@@ -14,12 +14,12 @@ internal object ModuleSettingsSchema {
         ),
         phoneLiquidGlassEnabled = values.boolean(
             KEY_PHONE_LIQUID_GLASS,
-            default = false,
+            default = true,
         ),
         futureBlurEnabled = values.boolean(KEY_FUTURE_BLUR, default = true),
         navigationCompensationEnabled = values.boolean(
             KEY_NAVIGATION_COMPENSATION,
-            default = false,
+            default = true,
         ),
         lyricBlurRadiusOffsetPx = values.number(KEY_LYRIC_BLUR_RADIUS_OFFSET)
             ?.coerceIn(
