@@ -281,13 +281,13 @@ class SettingsActivity : Activity() {
     }
 
     private fun renderMainPage(settings: ModuleSettings, snapshot: XposedServiceSnapshot) {
-        val writable = snapshot.isRemoteAvailable
+        val writable = true
 
         content.addView(statusCard(snapshot))
         content.addView(spacer(20))
         content.addView(featureCard(settings, writable))
         content.addView(spacer(24))
-        content.addView(fontCard(settings.fontManifest, snapshot.isRemoteFileAvailable))
+        content.addView(fontCard(settings.fontManifest, true))
         content.addView(spacer(24))
         content.addView(sectionLabel("应用"))
         content.addView(spacer(10))
@@ -303,10 +303,10 @@ class SettingsActivity : Activity() {
             settings.customLyricsManifest.entries,
             customLyricsSearchQuery,
         )
-        content.addView(customLyricsSettingsCard(settings, snapshot.isRemoteAvailable))
+        content.addView(customLyricsSettingsCard(settings, true))
         content.addView(spacer(20))
         content.addView(
-            customLyricsCard(settings.customLyricsManifest, snapshot.isRemoteFileAvailable),
+            customLyricsCard(settings.customLyricsManifest, true),
         )
     }
 
@@ -329,7 +329,7 @@ class SettingsActivity : Activity() {
     }
 
     private fun statusCard(snapshot: XposedServiceSnapshot): View = LinearLayout(this).apply {
-        val writable = snapshot.isRemoteAvailable
+        val writable = true
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(14), dp(16), dp(14))
@@ -661,7 +661,6 @@ class SettingsActivity : Activity() {
             })
             addView(TextView(this@SettingsActivity).apply {
                 text = when {
-                    !writable -> "需要 libxposed API 102 remote file 服务"
                     manifest.enabled -> "仅覆盖播放器歌词 · 重开 Apple Music 后生效"
                     else -> "导入 TTF/OTF · 重开 Apple Music 后生效"
                 }
@@ -704,10 +703,6 @@ class SettingsActivity : Activity() {
     }
 
     private fun chooseFont() {
-        if (!ModuleApplication.serviceSnapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
@@ -726,10 +721,6 @@ class SettingsActivity : Activity() {
 
     private fun importFont(uri: android.net.Uri) {
         val snapshot = ModuleApplication.serviceSnapshot
-        if (!snapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         backgroundExecutor.execute {
             val result = SafFontImporter(applicationContext, snapshot, store).import(uri)
             runOnUiThread {
@@ -746,10 +737,6 @@ class SettingsActivity : Activity() {
 
     private fun restoreFont() {
         val snapshot = ModuleApplication.serviceSnapshot
-        if (!snapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         val oldManifest = store.settings(snapshot).fontManifest
         backgroundExecutor.execute {
             val cleared = store.saveFontManifest(LyricsFontManifest.disabled(), snapshot)
@@ -775,7 +762,6 @@ class SettingsActivity : Activity() {
             })
             addView(TextView(this@SettingsActivity).apply {
                 text = when {
-                    !writable -> "需要 libxposed API 102 remote file 服务"
                     manifest.entries.isEmpty() -> "按 Apple Music ID 手动添加 TTML；不会在播放时联网识歌"
                     else -> "已配置 ${manifest.entries.size} 首；更改后重开 Apple Music 生效"
                 }
@@ -897,10 +883,6 @@ class SettingsActivity : Activity() {
     }
 
     private fun chooseCustomLyricsBackupDestination() {
-        if (!ModuleApplication.serviceSnapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = BACKUP_MIME_TYPE
@@ -909,10 +891,6 @@ class SettingsActivity : Activity() {
     }
 
     private fun chooseCustomLyricsBackupRestore() {
-        if (!ModuleApplication.serviceSnapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
@@ -1240,10 +1218,6 @@ class SettingsActivity : Activity() {
     )
 
     private fun syncCustomLyricsFromGitHub() {
-        if (!ModuleApplication.serviceSnapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         val cancelled = AtomicBoolean(false)
         val progress = TextView(this).apply {
             text = "正在读取 GitHub 索引…"
@@ -1433,7 +1407,6 @@ class SettingsActivity : Activity() {
 
     private fun loadExistingCustomTtml(entry: CustomLyricsEntry, ttmlInput: EditText) {
         val snapshot = ModuleApplication.serviceSnapshot
-        if (!snapshot.isRemoteFileAvailable) return
         backgroundExecutor.execute {
             val reader = CustomLyricsFileReader { fileId ->
                 snapshot.openRemoteFile(fileId)?.let { descriptor ->
@@ -1466,10 +1439,6 @@ class SettingsActivity : Activity() {
         dialog: AlertDialog,
     ) {
         val snapshot = ModuleApplication.serviceSnapshot
-        if (!snapshot.isRemoteFileAvailable) {
-            toast("libxposed remote file 服务不可用")
-            return
-        }
         backgroundExecutor.execute {
             val result = CustomLyricsManager(snapshot, store).saveMany(
                 draft = CustomLyricsMultiIdDraft(
