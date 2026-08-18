@@ -9,7 +9,7 @@ import dev.amenhancer.module.model.ModuleSettings
 
 class TargetConfigClient(
     private val preferences: SharedPreferences,
-    private val remoteFileOpener: ((String) -> ParcelFileDescriptor)? = null,
+    private val remoteFileOpener: ((String) -> ParcelFileDescriptor?)? = null,
 ) {
     @Volatile
     private var cachedIndex: CachedIndex? = null
