@@ -101,8 +101,7 @@ internal object PhoneLiquidGlassResourceHook {
 
 internal object PhoneLiquidGlassQualifier {
     fun isEligible(context: Context, settings: ModuleSettings): Boolean =
-        !TabletModeQualifier.isOfficialTablet(context) &&
-            settings.phoneLiquidGlassEnabled
+        settings.phoneLiquidGlassEnabled
 }
 
 private object PhoneLiquidGlassStyler {
