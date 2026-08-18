@@ -11,22 +11,17 @@ import dev.amenhancer.module.model.ModuleSettings
 
 class ConfigStore(context: Context) {
     private val appContext = context.applicationContext
-    private val legacyPreferences = appContext.getSharedPreferences(
-        LEGACY_PREFERENCES_NAME,
-        Context.MODE_PRIVATE,
-    )
+
     @Volatile
     private var cachedIndex: CachedIndex? = null
+
     fun settings(): ModuleSettings = settings(ModuleApplication.serviceSnapshot)
 
-    internal fun settings(snapshot: XposedServiceSnapshot): ModuleSettings {
-        val preferences = snapshot.preferences ?: legacyPreferences
-        return ModuleSettingsSchema.decode(preferences.all)
-    }
+    internal fun settings(snapshot: XposedServiceSnapshot): ModuleSettings =
+        ModuleSettingsSchema.decode(snapshot.preferences.all)
 
     internal fun settingsWithCustomLyrics(snapshot: XposedServiceSnapshot): ModuleSettings {
-        val preferences = snapshot.preferences ?: legacyPreferences
-        val values = preferences.all
+        val values = snapshot.preferences.all
         val base = ModuleSettingsSchema.decode(values)
         val pointer = ModuleSettingsSchema.decodeIndexPointer(values)
         val cacheKey = IndexCacheKey(
@@ -50,52 +45,38 @@ class ConfigStore(context: Context) {
     }
 
     /** Current index state (pointer + resolved manifest) for settings-process mutations. */
-    internal fun indexState(snapshot: XposedServiceSnapshot): CustomLyricsIndexState {
-        val preferences = snapshot.preferences ?: legacyPreferences
-        return CustomLyricsIndexRepository.state(preferences.all) { fileId ->
+    internal fun indexState(snapshot: XposedServiceSnapshot): CustomLyricsIndexState =
+        CustomLyricsIndexRepository.state(snapshot.preferences.all) { fileId ->
             snapshot.openRemoteFile(fileId)?.let { ParcelFileDescriptor.AutoCloseInputStream(it) }
         }
-    }
 
-    fun saveSettings(settings: ModuleSettings): Boolean {
-        val preferences = ModuleApplication.serviceSnapshot.preferences ?: return false
-        return writeValues(
-            preferences,
+    fun saveSettings(settings: ModuleSettings): Boolean =
+        writeValues(
+            ModuleApplication.serviceSnapshot.preferences,
             ModuleSettingsSchema.encodeOrdinarySettings(settings),
             synchronous = false,
         )
-    }
 
     internal fun saveFontManifest(
         manifest: LyricsFontManifest,
         snapshot: XposedServiceSnapshot = ModuleApplication.serviceSnapshot,
-    ): Boolean {
-        if (!snapshot.isRemoteFileAvailable || !ModuleApplication.isCurrentSnapshot(snapshot)) {
-            return false
-        }
-        val preferences = snapshot.preferences ?: return false
-        return writeValues(
-            preferences,
+    ): Boolean =
+        writeValues(
+            snapshot.preferences,
             ModuleSettingsSchema.encodeFontManifest(manifest),
             synchronous = true,
         )
-    }
 
     /** Atomic pointer publication; the index file must already be written. */
     internal fun publishIndexPointer(
         pointer: CustomLyricsIndexPointer,
         snapshot: XposedServiceSnapshot = ModuleApplication.serviceSnapshot,
-    ): Boolean {
-        if (!snapshot.isRemoteFileAvailable || !ModuleApplication.isCurrentSnapshot(snapshot)) {
-            return false
-        }
-        val preferences = snapshot.preferences ?: return false
-        return writeValues(
-            preferences,
+    ): Boolean =
+        writeValues(
+            snapshot.preferences,
             ModuleSettingsSchema.encodeIndexPointer(pointer),
             synchronous = true,
         )
-    }
 
     companion object {
         private data class IndexCacheKey(
