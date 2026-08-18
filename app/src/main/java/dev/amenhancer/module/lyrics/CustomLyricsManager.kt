@@ -36,7 +36,7 @@ internal class CustomLyricsManager(
         },
         writeRemoteFile = ::writeRemoteFile,
         publishPointer = { pointer ->
-            isWritable() && configStore.publishIndexPointer(pointer, snapshot)
+            configStore.publishIndexPointer(pointer, snapshot)
         },
         deleteRemoteFile = { fileId ->
             if (ModuleApplication.isCurrentSnapshot(snapshot)) snapshot.deleteRemoteFile(fileId)
@@ -47,7 +47,6 @@ internal class CustomLyricsManager(
         draft: CustomLyricsDraft,
         replacingAppleMusicId: Long? = null,
     ): CustomLyricsSaveResult = synchronized(mutationLock) {
-        if (!isWritable()) return CustomLyricsSaveResult.Failed("libxposed remote file 服务不可用")
         val state = configStore.indexState(snapshot)
         return CustomLyricsImportTransaction(
             fileIdFactory = ::newFileId,
@@ -63,7 +62,6 @@ internal class CustomLyricsManager(
         draft: CustomLyricsMultiIdDraft,
         replacingAppleMusicIds: List<Long> = emptyList(),
     ): CustomLyricsBatchSaveResult = synchronized(mutationLock) {
-        if (!isWritable()) return CustomLyricsBatchSaveResult.Failed("libxposed remote file 服务不可用")
         val state = configStore.indexState(snapshot)
         return CustomLyricsImportTransaction(
             fileIdFactory = ::newFileId,
@@ -101,7 +99,6 @@ internal class CustomLyricsManager(
     fun delete(appleMusicId: Long): CustomLyricsMutationResult = delete(listOf(appleMusicId))
 
     fun delete(appleMusicIds: List<Long>): CustomLyricsMutationResult = synchronized(mutationLock) {
-        if (!isWritable()) return CustomLyricsMutationResult.Failed("libxposed remote file 服务不可用")
         val state = configStore.indexState(snapshot)
         val targetIds = appleMusicIds.toSet()
         if (targetIds.isEmpty() || targetIds.any { it <= 0L }) {
@@ -133,7 +130,6 @@ internal class CustomLyricsManager(
      * time. Consumes and closes [out].
      */
     fun backup(out: OutputStream): CustomLyricsBackupResult = synchronized(mutationLock) {
-        if (!isWritable()) return CustomLyricsBackupResult.Failed("libxposed remote file 服务不可用")
         val manifest = configStore.indexState(snapshot).manifest
         return when (val result = CustomLyricsBackupCodec.encode(manifest, ::readRemoteFile, out)) {
             is CustomLyricsBackupEncodeResult.Encoded ->
@@ -156,7 +152,6 @@ internal class CustomLyricsManager(
         input: InputStream,
         policy: CustomLyricsRestorePolicy = CustomLyricsRestorePolicy.OVERWRITE,
     ): CustomLyricsRestoreResult = synchronized(mutationLock) {
-        if (!isWritable()) return CustomLyricsRestoreResult.Failed("libxposed remote file 服务不可用")
         val state = configStore.indexState(snapshot)
         return CustomLyricsRestoreTransaction(
             fileIdFactory = ::newFileId,
@@ -179,7 +174,6 @@ internal class CustomLyricsManager(
         isCancelled: () -> Boolean = { false },
         onProgress: (CustomLyricsSyncProgress) -> Unit = {},
     ): CustomLyricsSyncResult = synchronized(mutationLock) {
-        if (!isWritable()) return CustomLyricsSyncResult.Failed("libxposed remote file 服务不可用")
         val state = configStore.indexState(snapshot)
         if (!state.canCommit) {
             return CustomLyricsSyncResult.Failed("歌词索引文件不可读，无法同步")
@@ -201,7 +195,6 @@ internal class CustomLyricsManager(
     }
 
     private fun readRemoteFile(fileId: String): ByteArray? {
-        if (!isWritable()) return null
         val descriptor = snapshot.openRemoteFile(fileId) ?: return null
         return runCatching {
             ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
@@ -213,7 +206,6 @@ internal class CustomLyricsManager(
     private fun mutate(
         transform: (CustomLyricsManifest) -> CustomLyricsManifest?,
     ): CustomLyricsMutationResult {
-        if (!isWritable()) return CustomLyricsMutationResult.Failed("libxposed remote file 服务不可用")
         val state = configStore.indexState(snapshot)
         val candidate = transform(state.manifest) ?: return CustomLyricsMutationResult.Failed("歌词映射不存在")
         val next = CustomLyricsManifestPolicy.sanitize(candidate)
@@ -231,20 +223,10 @@ internal class CustomLyricsManager(
         allowRecovery,
     ) is CustomLyricsIndexCommitResult.Committed
 
-    private fun isWritable(): Boolean =
-        snapshot.isRemoteFileAvailable && ModuleApplication.isCurrentSnapshot(snapshot)
+    private fun isWritable(): Boolean = true
 
-    private fun writeRemoteFile(fileId: String, bytes: ByteArray): Boolean {
-        if (!isWritable()) return false
-        val descriptor = snapshot.openRemoteFile(fileId) ?: return false
-        return runCatching {
-            ParcelFileDescriptor.AutoCloseOutputStream(descriptor).use { output ->
-                output.write(bytes)
-                output.flush()
-            }
-            true
-        }.getOrDefault(false)
-    }
+    private fun writeRemoteFile(fileId: String, bytes: ByteArray): Boolean =
+        snapshot.writeRemoteFile(fileId, bytes)
 
     private fun newFileId(): String = "lyrics_" + UUID.randomUUID().toString().replace("-", "")
 
