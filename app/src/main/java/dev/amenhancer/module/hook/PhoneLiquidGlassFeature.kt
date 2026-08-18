@@ -127,6 +127,10 @@ private object PhoneLiquidGlassStyler {
 
     private val installed = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
     private val blurTargets = WeakHashMap<Activity, BlurTarget>()
+    // 新增：跟踪所有已安装的 BlurView，用于页面切换时统一刷新
+    private val blurViews = Collections.newSetFromMap(WeakHashMap<BlurView, Boolean>())
+    // 新增：跟踪已注册刷新监听的 Activity，避免重复注册
+    private val refreshRegisteredFor = Collections.newSetFromMap(WeakHashMap<Activity, Boolean>())
 
     fun installBottomNavigation(root: ViewGroup) {
         if (!installed.add(root)) return
@@ -254,6 +258,60 @@ private object PhoneLiquidGlassStyler {
                 .setFrameClearDrawable(ColorDrawable(Color.TRANSPARENT))
                 .setBlurRadius(GLASS_BLUR_RADIUS)
                 .setOverlayColor(overlay)
+
+            // === 修复：注册模糊刷新与背景透明化 ===
+            blurViews.add(blurView)
+            ensureBlurRefreshRegistered(activity)
+            transparentizeContentBackdrops(target)
+        }
+    }
+
+    // === 修复1：页面切换/滚动时强制刷新所有 BlurView ===
+    // 原代码只在首次 attach 时 setupWith 一次，Fragment 切换后 BlurView 不会自动重新采样，
+    // 导致模糊停留在旧帧或变成纯色。这里监听全局布局和滚动事件，每次变化时 invalidate。
+    private fun ensureBlurRefreshRegistered(activity: Activity) {
+        if (!refreshRegisteredFor.add(activity)) return
+        val decor = activity.window.decorView
+        decor.viewTreeObserver.addOnGlobalLayoutListener {
+            transparentizeContentBackdrops(blurTargets[activity] ?: return@addOnGlobalLayoutListener)
+            refreshAllBlurs()
+        }
+        decor.viewTreeObserver.addOnScrollChangedListener {
+            refreshAllBlurs()
+        }
+        decor.viewTreeObserver.addOnWindowFocusChangeListener {
+            refreshAllBlurs()
+        }
+    }
+
+    private fun refreshAllBlurs() {
+        blurViews.forEach { it.invalidate() }
+    }
+
+    // === 修复2：透明化子页面的不透明背景层 ===
+    // Apple Music 二级页面（搜索、资料库、专辑详情等）的根布局通常有一层纯色不透明背景，
+    // 挡住了底层内容，导致 BlurView 只能模糊到纯色。这里递归找到占满容器的纯色背景并设为透明。
+    private fun transparentizeContentBackdrops(container: ViewGroup) {
+        transparentizeBackdropsRecursive(container, depth = 0)
+    }
+
+    private fun transparentizeBackdropsRecursive(container: ViewGroup, depth: Int) {
+        if (depth > 4) return
+        for (i in 0 until container.childCount) {
+            val child = container.getChildAt(i)
+            val params = child.layoutParams ?: continue
+            // 只处理占满父容器的视图（通常是页面根布局或背景层）
+            if (params.width != ViewGroup.LayoutParams.MATCH_PARENT ||
+                params.height != ViewGroup.LayoutParams.MATCH_PARENT) continue
+            // 如果有不透明纯色背景，设为透明
+            val bg = child.background
+            if (bg is ColorDrawable && Color.alpha(bg.color) > 200) {
+                child.background = ColorDrawable(Color.TRANSPARENT)
+            }
+            // 递归处理子容器（Fragment 嵌套）
+            if (child is ViewGroup) {
+                transparentizeBackdropsRecursive(child, depth + 1)
+            }
         }
     }
 
