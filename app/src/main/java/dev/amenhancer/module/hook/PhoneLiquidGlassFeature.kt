@@ -26,6 +26,7 @@ import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
 import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import dev.amenhancer.module.ModuleConstants
 import dev.amenhancer.module.config.TargetConfigClient
@@ -499,7 +500,10 @@ private object PhoneLiquidGlassStyler {
     // 递归隐藏 Tab 内所有 TextView，同时设置内容居中
     private fun hideTabTextAndCenterIcon(tabView: View) {
         if (tabView is ViewGroup) {
-            tabView.gravity = Gravity.CENTER
+            // 只有 LinearLayout 有 setGravity，安全转型后再设置
+            if (tabView is LinearLayout) {
+                tabView.gravity = Gravity.CENTER
+            }
             for (i in 0 until tabView.childCount) {
                 val child = tabView.getChildAt(i)
                 if (child is TextView) {
