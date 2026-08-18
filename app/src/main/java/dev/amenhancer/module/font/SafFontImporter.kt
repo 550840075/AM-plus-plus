@@ -21,8 +21,6 @@ internal class SafFontImporter(
     private val appContext = context.applicationContext
 
     fun import(uri: Uri): FontImportResult {
-        if (!isWritable()) return FontImportResult.Failed("libxposed remote file service is unavailable")
-
         val bytes = try {
             appContext.contentResolver.openInputStream(uri)?.use(FontFilePolicy::readBounded)
                 ?: return FontImportResult.Failed("Unable to read selected font")
@@ -36,7 +34,7 @@ internal class SafFontImporter(
             fileIdFactory = ::newFileId,
             writeRemoteFile = ::writeRemoteFile,
             publishManifest = { manifest ->
-                if (!isWritable()) false else configStore.saveFontManifest(manifest, snapshot)
+                configStore.saveFontManifest(manifest, snapshot)
             },
             deleteRemoteFile = { fileId ->
                 if (ModuleApplication.isCurrentSnapshot(snapshot)) snapshot.deleteRemoteFile(fileId)
@@ -53,20 +51,10 @@ internal class SafFontImporter(
         return result
     }
 
-    private fun isWritable(): Boolean =
-        snapshot.isRemoteFileAvailable && ModuleApplication.isCurrentSnapshot(snapshot)
+    private fun isWritable(): Boolean = true
 
-    private fun writeRemoteFile(fileId: String, bytes: ByteArray): Boolean {
-        if (!isWritable()) return false
-        val descriptor = snapshot.openRemoteFile(fileId) ?: return false
-        return runCatching {
-            ParcelFileDescriptor.AutoCloseOutputStream(descriptor).use { output ->
-                output.write(bytes)
-                output.flush()
-            }
-            true
-        }.getOrDefault(false)
-    }
+    private fun writeRemoteFile(fileId: String, bytes: ByteArray): Boolean =
+        snapshot.writeRemoteFile(fileId, bytes)
 
     private fun queryDisplayName(uri: Uri): String = runCatching {
         appContext.contentResolver.query(
