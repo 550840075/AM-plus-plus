@@ -26,6 +26,7 @@ import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
 import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
+import android.widget.TextView
 import dev.amenhancer.module.ModuleConstants
 import dev.amenhancer.module.config.TargetConfigClient
 import dev.amenhancer.module.model.ModuleSettings
@@ -128,7 +129,6 @@ private object PhoneLiquidGlassStyler {
     private val installed = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
     private val blurTargets = WeakHashMap<Activity, BlurTarget>()
 
-    // 保存每个 BlurView 的配置，用于布局变化时重新 setupWith
     private data class BlurViewConfig(
         val target: BlurTarget,
         val overlay: Int,
@@ -258,16 +258,12 @@ private object PhoneLiquidGlassStyler {
             } else {
                 Color.argb(48, 238, 238, 244)
             }
-            // 首次 setup
             applyBlurSetup(blurView, target, overlay)
-            // 保存配置供后续刷新使用
             blurViewConfigs[blurView] = BlurViewConfig(target, overlay)
-            // 注册全局布局监听，页面切换时重新 setupWith
             ensureBlurRefreshRegistered(activity)
         }
     }
 
-    // 统一的模糊配置应用方法
     private fun applyBlurSetup(blurView: BlurView, target: BlurTarget, overlay: Int) {
         blurView.setupWith(target, 4f, false)
             .setFrameClearDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -275,8 +271,6 @@ private object PhoneLiquidGlassStyler {
             .setOverlayColor(overlay)
     }
 
-    // 核心修复：监听全局布局变化，每次 Fragment 切换/页面滚动时重新调用 setupWith，
-    // 强制 BlurView 丢弃旧的采样缓存，对当前页面内容重新模糊采样。
     private fun ensureBlurRefreshRegistered(activity: Activity) {
         if (!refreshRegisteredFor.add(activity)) return
         val decor = activity.window.decorView
@@ -449,6 +443,9 @@ private object PhoneLiquidGlassStyler {
             item.background = ColorDrawable(Color.TRANSPARENT)
             item.minimumHeight = dp(item.context, 48)
             item.stateListAnimator = navigationItemPressAnimator(item)
+
+            // 隐藏底栏文字 + 图标居中
+            hideTabTextAndCenterIcon(item)
         }
         val indicator = LiquidSelectionIndicator(tabsFrame.context).apply {
             isClickable = false
@@ -496,6 +493,21 @@ private object PhoneLiquidGlassStyler {
                 }
             }
             true
+        }
+    }
+
+    // 递归隐藏 Tab 内所有 TextView，同时设置内容居中
+    private fun hideTabTextAndCenterIcon(tabView: View) {
+        if (tabView is ViewGroup) {
+            tabView.gravity = Gravity.CENTER
+            for (i in 0 until tabView.childCount) {
+                val child = tabView.getChildAt(i)
+                if (child is TextView) {
+                    child.visibility = View.GONE
+                } else {
+                    hideTabTextAndCenterIcon(child)
+                }
+            }
         }
     }
 
