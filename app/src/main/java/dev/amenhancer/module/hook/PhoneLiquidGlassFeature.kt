@@ -34,6 +34,7 @@ import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
 import dev.amenhancer.module.ModuleConstants
 import dev.amenhancer.module.config.TargetConfigClient
+import dev.amenhancer.module.model.ModuleSettings
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 import java.util.Collections
@@ -52,27 +53,29 @@ internal class PhoneLiquidGlassFeature : FeatureHook {
 }
 
 internal object PhoneLiquidGlassResourceHook {
-    fun install(config: TargetConfigClient) {
+    fun install() {
         LayoutInflationRegistry.register("bottom_navigation") { view ->
             val root = view as? ViewGroup ?: return@register
-            if (!PhoneLiquidGlassQualifier.isEligible(root.context, config)) return@register
+            val settings = TargetConfigClient.currentSettings()
+            if (!PhoneLiquidGlassQualifier.isEligible(root.context, settings)) return@register
             PhoneLiquidGlassStyler.installBottomNavigation(root)
-            installMiniPlayerWhenAvailable(root, config, attempt = 0)
+            installMiniPlayerWhenAvailable(root, settings, attempt = 0)
         }
         LayoutInflationRegistry.register("mini_player") { view ->
             val root = view as? FrameLayout ?: return@register
-            if (!PhoneLiquidGlassQualifier.isEligible(root.context, config)) return@register
+            val settings = TargetConfigClient.currentSettings()
+            if (!PhoneLiquidGlassQualifier.isEligible(root.context, settings)) return@register
             PhoneLiquidGlassStyler.installMiniPlayer(root)
         }
     }
 
     private fun installMiniPlayerWhenAvailable(
         navigationRoot: ViewGroup,
-        config: TargetConfigClient,
+        settings: ModuleSettings,
         attempt: Int,
     ) {
         navigationRoot.post {
-            if (!PhoneLiquidGlassQualifier.isEligible(navigationRoot.context, config)) return@post
+            if (!PhoneLiquidGlassQualifier.isEligible(navigationRoot.context, settings)) return@post
             val miniPlayerId = navigationRoot.resources.getIdentifier(
                 "mini_player",
                 "id",
@@ -85,7 +88,7 @@ internal object PhoneLiquidGlassResourceHook {
                 ModernXposedRuntime.log("phone liquid-glass mini player installed from navigation root")
             } else if (attempt < MINI_PLAYER_LOOKUP_RETRIES) {
                 navigationRoot.postDelayed(
-                    { installMiniPlayerWhenAvailable(navigationRoot, config, attempt + 1) },
+                    { installMiniPlayerWhenAvailable(navigationRoot, settings, attempt + 1) },
                     MINI_PLAYER_LOOKUP_DELAY_MS,
                 )
             }
@@ -97,9 +100,9 @@ internal object PhoneLiquidGlassResourceHook {
 }
 
 internal object PhoneLiquidGlassQualifier {
-    fun isEligible(context: Context, config: TargetConfigClient): Boolean =
+    fun isEligible(context: Context, settings: ModuleSettings): Boolean =
         !TabletModeQualifier.isOfficialTablet(context) &&
-            config.settings().phoneLiquidGlassEnabled
+            settings.phoneLiquidGlassEnabled
 }
 
 private object PhoneLiquidGlassStyler {
