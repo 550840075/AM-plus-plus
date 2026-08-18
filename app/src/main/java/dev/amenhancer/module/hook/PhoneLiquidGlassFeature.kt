@@ -26,6 +26,7 @@ import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
 import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.amenhancer.module.ModuleConstants
@@ -35,6 +36,7 @@ import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 import java.util.Collections
 import java.util.WeakHashMap
+import kotlin.math.abs
 
 /** WIP health adapter for the resource-time phone liquid-glass hooks. */
 internal class PhoneLiquidGlassFeature : FeatureHook {
@@ -136,6 +138,9 @@ private object PhoneLiquidGlassStyler {
     )
     private val blurViewConfigs = WeakHashMap<BlurView, BlurViewConfig>()
     private val refreshRegisteredFor = Collections.newSetFromMap(WeakHashMap<Activity, Boolean>())
+
+    // 新增：保存所有 Tab 项，用于页面切换后持续隐藏文字
+    private val tabViews = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
     fun installBottomNavigation(root: ViewGroup) {
         if (!installed.add(root)) return
@@ -277,12 +282,14 @@ private object PhoneLiquidGlassStyler {
         val decor = activity.window.decorView
         decor.viewTreeObserver.addOnGlobalLayoutListener {
             reapplyAllBlurs()
+            hideAllTabText()  // 页面切换/布局变化时重新隐藏文字
         }
         decor.viewTreeObserver.addOnScrollChangedListener {
             reapplyAllBlurs()
         }
         decor.viewTreeObserver.addOnWindowFocusChangeListener {
             reapplyAllBlurs()
+            hideAllTabText()  // 窗口重新获得焦点时也重新隐藏
         }
     }
 
@@ -290,6 +297,15 @@ private object PhoneLiquidGlassStyler {
         blurViewConfigs.forEach { (blurView, config) ->
             if (blurView.isAttachedToWindow && config.target.isAttachedToWindow) {
                 applyBlurSetup(blurView, config.target, config.overlay)
+            }
+        }
+    }
+
+    // 新增：遍历所有已保存的 Tab 项，重新隐藏文字并居中图标
+    private fun hideAllTabText() {
+        tabViews.forEach { tabView ->
+            if (tabView.isAttachedToWindow) {
+                hideTabTextAndCenterIcon(tabView)
             }
         }
     }
@@ -444,8 +460,8 @@ private object PhoneLiquidGlassStyler {
             item.background = ColorDrawable(Color.TRANSPARENT)
             item.minimumHeight = dp(item.context, 48)
             item.stateListAnimator = navigationItemPressAnimator(item)
-
-            // 隐藏底栏文字 + 图标居中
+            // 保存 Tab 项引用并隐藏文字
+            tabViews.add(item)
             hideTabTextAndCenterIcon(item)
         }
         val indicator = LiquidSelectionIndicator(tabsFrame.context).apply {
@@ -497,19 +513,46 @@ private object PhoneLiquidGlassStyler {
         }
     }
 
-    // 递归隐藏 Tab 内所有 TextView，同时设置内容居中
+    // 重写：递归隐藏文字 + 多布局类型居中 + translationY 强制居中 fallback
     private fun hideTabTextAndCenterIcon(tabView: View) {
-        if (tabView is ViewGroup) {
-            // 只有 LinearLayout 有 setGravity，安全转型后再设置
-            if (tabView is LinearLayout) {
-                tabView.gravity = Gravity.CENTER
+        if (tabView !is ViewGroup) return
+        var iconView: View? = null
+        for (i in 0 until tabView.childCount) {
+            val child = tabView.getChildAt(i)
+            if (child is TextView) {
+                child.visibility = View.GONE
+            } else if (child is ViewGroup) {
+                hideTabTextAndCenterIcon(child)
+            } else if (iconView == null) {
+                iconView = child
             }
-            for (i in 0 until tabView.childCount) {
-                val child = tabView.getChildAt(i)
-                if (child is TextView) {
-                    child.visibility = View.GONE
-                } else {
-                    hideTabTextAndCenterIcon(child)
+        }
+        // 按布局类型设置 gravity 居中
+        when (tabView) {
+            is LinearLayout -> {
+                tabView.gravity = Gravity.CENTER
+                tabView.setPadding(0, 0, 0, 0)
+            }
+            is FrameLayout -> {
+                iconView?.let {
+                    val lp = it.layoutParams as? FrameLayout.LayoutParams
+                    if (lp != null && lp.gravity != Gravity.CENTER) {
+                        lp.gravity = Gravity.CENTER
+                        it.layoutParams = lp
+                    }
+                }
+            }
+        }
+        // Fallback：布局完成后用 translationY 强制垂直居中（兼容所有布局类型）
+        if (iconView != null) {
+            val icon = iconView
+            tabView.post {
+                if (!tabView.isAttachedToWindow) return@post
+                if (tabView.height > 0 && icon.height > 0) {
+                    val targetY = (tabView.height - icon.height) / 2f
+                    if (abs(icon.translationY - targetY) > 0.5f) {
+                        icon.translationY = targetY
+                    }
                 }
             }
         }
