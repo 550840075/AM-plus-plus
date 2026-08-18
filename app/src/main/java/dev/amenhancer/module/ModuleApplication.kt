@@ -1,44 +1,30 @@
 package dev.amenhancer.module
 
 import android.app.Application
-import io.github.libxposed.service.XposedService
-import io.github.libxposed.service.XposedServiceHelper
+import android.content.Context
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicReference
 
-class ModuleApplication : Application(), XposedServiceHelper.OnServiceListener {
+class ModuleApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        XposedServiceHelper.registerListener(this)
-    }
-
-    override fun onServiceBind(service: XposedService) {
-        val supportsRemote = service.apiVersion >= 102 &&
-            service.frameworkProperties.and(XposedService.PROP_CAP_REMOTE) != 0L
-        if (!supportsRemote) {
-            publish(XposedServiceSnapshot.unsupported(service.frameworkName, service.apiVersion))
-            return
-        }
-        val preferences = service.getRemotePreferences(ModuleConstants.REMOTE_PREFERENCES_GROUP)
-        dev.amenhancer.module.config.ConfigStore.migrateLegacyPreferences(this, preferences)
-        publish(XposedServiceSnapshot.connected(
-            preferences = preferences,
-            frameworkName = service.frameworkName,
-            apiVersion = service.apiVersion,
-            service = service,
-        ))
-    }
-
-    override fun onServiceDied(service: XposedService) {
-        publish(XposedServiceSnapshot.disconnected())
+        val preferences = getSharedPreferences(
+            LOCAL_PREFERENCES_NAME,
+            Context.MODE_PRIVATE,
+        )
+        publish(XposedServiceSnapshot.local(preferences, filesDir))
     }
 
     companion object {
-        private val serviceSnapshotReference = AtomicReference(XposedServiceSnapshot.waiting())
-        internal val serviceSnapshot: XposedServiceSnapshot get() = serviceSnapshotReference.get()
+        private val serviceSnapshotReference =
+            AtomicReference<XposedServiceSnapshot?>(null)
 
-        internal fun isCurrentSnapshot(snapshot: XposedServiceSnapshot): Boolean =
-            serviceSnapshotReference.get() === snapshot
+        internal val serviceSnapshot: XposedServiceSnapshot
+            get() = serviceSnapshotReference.get()
+                ?: error("ModuleApplication not initialized; serviceSnapshot accessed before onCreate()")
+
+        internal fun isCurrentSnapshot(snapshot: XposedServiceSnapshot): Boolean = true
+
         private val listeners = CopyOnWriteArraySet<(XposedServiceSnapshot) -> Unit>()
 
         internal fun addServiceListener(listener: (XposedServiceSnapshot) -> Unit) {
@@ -53,5 +39,7 @@ class ModuleApplication : Application(), XposedServiceHelper.OnServiceListener {
             serviceSnapshotReference.set(snapshot)
             listeners.forEach { it(snapshot) }
         }
+
+        private const val LOCAL_PREFERENCES_NAME = "module-settings"
     }
 }
