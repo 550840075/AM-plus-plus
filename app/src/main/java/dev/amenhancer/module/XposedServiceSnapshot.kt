@@ -2,56 +2,50 @@ package dev.amenhancer.module
 
 import android.content.SharedPreferences
 import android.os.ParcelFileDescriptor
-import io.github.libxposed.service.XposedService
+import java.io.File
 
-/** Publishes remote preferences and their user-visible connection status as one value. */
+/**
+ * 本地配置模式：不依赖 libxposed API 102 remote preferences / remote file。
+ * 配置存储在模块私有 SharedPreferences，文件存储在模块 filesDir。
+ */
 internal class XposedServiceSnapshot private constructor(
-    val preferences: SharedPreferences?,
-    val service: XposedService?,
+    val preferences: SharedPreferences,
+    val filesDir: File,
     val status: String,
 ) {
-    val isRemoteAvailable: Boolean get() = preferences != null
-    val isRemoteFileAvailable: Boolean get() = preferences != null && service != null
+    val isRemoteAvailable: Boolean get() = true
+    val isRemoteFileAvailable: Boolean get() = true
 
     init {
-        require(status.isNotBlank()) { "libxposed connection status must not be blank" }
+        require(status.isNotBlank()) { "connection status must not be blank" }
     }
 
+    /** 只读打开已有文件；不存在时返回 null。 */
     internal fun openRemoteFile(name: String): ParcelFileDescriptor? =
-        if (!isRemoteFileAvailable) null else runCatching { service?.openRemoteFile(name) }.getOrNull()
+        runCatching {
+            val file = File(filesDir, name)
+            if (!file.exists()) null else ParcelFileDescriptor.open(
+                file,
+                ParcelFileDescriptor.MODE_READ_ONLY,
+            )
+        }.getOrNull()
+
+    /** 覆盖写入文件（自动截断），返回是否成功。 */
+    internal fun writeRemoteFile(name: String, bytes: ByteArray): Boolean =
+        runCatching {
+            File(filesDir, name).writeBytes(bytes)
+            true
+        }.getOrDefault(false)
 
     internal fun deleteRemoteFile(name: String): Boolean =
-        if (!isRemoteFileAvailable) false else runCatching { service?.deleteRemoteFile(name) == true }.getOrDefault(false)
+        runCatching { File(filesDir, name).delete() }.getOrDefault(false)
 
     companion object {
-        fun waiting(): XposedServiceSnapshot = XposedServiceSnapshot(
-            preferences = null,
-            service = null,
-            status = "等待 libxposed API 102 服务",
-        )
-
-        fun connected(
-            preferences: SharedPreferences,
-            frameworkName: String,
-            apiVersion: Int,
-            service: XposedService? = null,
-        ): XposedServiceSnapshot = XposedServiceSnapshot(
-            preferences = preferences,
-            service = service,
-            status = "已连接 $frameworkName API $apiVersion",
-        )
-
-        fun unsupported(frameworkName: String, apiVersion: Int): XposedServiceSnapshot =
+        fun local(preferences: SharedPreferences, filesDir: File): XposedServiceSnapshot =
             XposedServiceSnapshot(
-                preferences = null,
-                service = null,
-                status = "$frameworkName API $apiVersion 不支持 API 102 remote preferences",
+                preferences = preferences,
+                filesDir = filesDir,
+                status = "本地配置模式",
             )
-
-        fun disconnected(): XposedServiceSnapshot = XposedServiceSnapshot(
-            preferences = null,
-            service = null,
-            status = "libxposed 服务连接已断开",
-        )
     }
 }
