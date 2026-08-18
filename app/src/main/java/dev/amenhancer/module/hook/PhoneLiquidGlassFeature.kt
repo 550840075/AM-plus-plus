@@ -15,27 +15,33 @@ internal object PhoneLiquidGlassQualifier {
         settings.phoneLiquidGlassEnabled
 }
 
+internal class PhoneLiquidGlassFeature : Feature {
+    override fun isEligible(context: Context): Boolean {
+        return PhoneLiquidGlassQualifier.isEligible(context, TargetConfigClient.currentSettings())
+    }
+}
+
 internal class PhoneLiquidGlassResourceHook {
 
-    fun install(config: TargetConfigClient) {
+    fun install() {
         val bottomNavId = findId("bottom_navigation")
         val miniPlayerId = findId("mini_player")
 
         if (bottomNavId != 0) {
             ModernXposedRuntime.hookLayout(bottomNavId) { view ->
-                installBottomNavGlass(view, config)
+                installBottomNavGlass(view)
             }
         }
 
         if (miniPlayerId != 0) {
             ModernXposedRuntime.hookLayout(miniPlayerId) { view ->
-                installMiniPlayerGlass(view, config)
+                installMiniPlayerGlass(view)
             }
         }
     }
 
-    private fun installBottomNavGlass(view: View, config: TargetConfigClient) {
-        val settings = config.currentSettings()
+    private fun installBottomNavGlass(view: View) {
+        val settings = TargetConfigClient.currentSettings()
         if (!settings.phoneLiquidGlassEnabled) return
 
         val context = view.context
@@ -44,9 +50,8 @@ internal class PhoneLiquidGlassResourceHook {
         val blurView = BlurView(context)
         blurView.layoutParams = view.layoutParams
 
-        val radius = 18f
         blurView.setupWith(parent, RenderScriptBlur(context))
-            .setBlurRadius(radius)
+            .setBlurRadius(18f)
             .setBlurAutoUpdate(true)
 
         val maskColor = if (isSystemDarkMode(context)) {
@@ -64,8 +69,8 @@ internal class PhoneLiquidGlassResourceHook {
         view.setBackgroundColor(Color.TRANSPARENT)
     }
 
-    private fun installMiniPlayerGlass(view: View, config: TargetConfigClient) {
-        val settings = config.currentSettings()
+    private fun installMiniPlayerGlass(view: View) {
+        val settings = TargetConfigClient.currentSettings()
         if (!settings.phoneLiquidGlassEnabled) return
 
         val context = view.context
@@ -74,9 +79,8 @@ internal class PhoneLiquidGlassResourceHook {
         val blurView = BlurView(context)
         blurView.layoutParams = view.layoutParams
 
-        val radius = 18f
         blurView.setupWith(parent, RenderScriptBlur(context))
-            .setBlurRadius(radius)
+            .setBlurRadius(18f)
             .setBlurAutoUpdate(true)
 
         val maskColor = if (isSystemDarkMode(context)) {
