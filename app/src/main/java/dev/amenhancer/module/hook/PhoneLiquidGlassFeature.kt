@@ -30,7 +30,6 @@ internal class PhoneLiquidGlassResourceHook {
             ModernXposedRuntime.hookLayout(miniPlayerId) { view ->
                 installMiniPlayerGlass(view)
             }
-            installMiniPlayerWhenAvailable()
         }
     }
 
@@ -92,23 +91,6 @@ internal class PhoneLiquidGlassResourceHook {
         blurView.addView(view)
 
         view.setBackgroundColor(Color.TRANSPARENT)
-    }
-
-    private fun installMiniPlayerWhenAvailable() {
-        val miniPlayerId = findId("mini_player")
-        if (miniPlayerId == 0) return
-
-        ModernXposedRuntime.hookMethod(
-            "android.view.ViewGroup",
-            "onAttachedToWindow"
-        ) { param ->
-            val view = param.thisObject as ViewGroup
-            if (view.id == miniPlayerId) {
-                view.post {
-                    installMiniPlayerGlass(view)
-                }
-            }
-        }
     }
 
     private fun isSystemDarkMode(context: Context): Boolean {
