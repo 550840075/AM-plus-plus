@@ -21,17 +21,18 @@ internal object FeatureInstallation {
     private val module by lazy(::productionFeatureInstallationModule)
 
     fun install(
-        config: TargetConfigClient,
+        configProvider: (Application) -> TargetConfigClient,
         targetClassLoader: ClassLoader,
     ) {
-        module.install(config, targetClassLoader)
+        module.install(configProvider, targetClassLoader)
     }
 }
+
 internal class FeatureInstallationModule(
     private val plans: List<FeatureInstallationPlan>,
     private val installLayoutInflationHooks: () -> Unit,
     private val registerApplicationCreated: (
-        TargetConfigClient,
+        (Application) -> TargetConfigClient,
         ClassLoader,
         (() -> HookContext) -> Unit,
     ) -> Unit,
@@ -42,20 +43,18 @@ internal class FeatureInstallationModule(
     private var activeSession: FeatureInstallationSession? = null
 
     fun install(
-        config: TargetConfigClient,
+        configProvider: (Application) -> TargetConfigClient,
         targetClassLoader: ClassLoader,
     ): FeatureInstallationSession = synchronized(this) {
         activeSession?.let { return@synchronized it }
-
-        plans.forEach { plan -> plan.registerResources(config) }
+        plans.forEach { plan -> plan.registerResources() }
         installLayoutInflationHooks()
-
         val session = FeatureInstallationSession(
             features = plans.map(FeatureInstallationPlan::feature),
             reportHealth = reportHealth,
             reportError = reportError,
         )
-        registerApplicationCreated(config, targetClassLoader, session::install)
+        registerApplicationCreated(configProvider, targetClassLoader, session::install)
         activeSession = session
         session
     }
@@ -63,7 +62,7 @@ internal class FeatureInstallationModule(
 
 internal data class FeatureInstallationPlan(
     val feature: FeatureHook,
-    val registerResources: (TargetConfigClient) -> Unit = {},
+    val registerResources: () -> Unit = {},
 )
 
 internal enum class FeatureInstallationPhase {
@@ -102,7 +101,6 @@ internal class FeatureInstallationSession(
                 health = emptyList(),
             ),
         )
-
         features.forEach { feature ->
             val result = feature.installSafely(context, reportError)
             val health = FeatureHealth(
@@ -120,7 +118,6 @@ internal class FeatureInstallationSession(
                 ),
             )
         }
-
         snapshot.set(
             FeatureInstallationSnapshot(
                 phase = FeatureInstallationPhase.COMPLETE,
@@ -160,16 +157,12 @@ internal class FeatureInstallResult private constructor(
     companion object {
         fun active(message: String): FeatureInstallResult =
             FeatureInstallResult(FeatureState.ACTIVE, message)
-
         fun disabled(message: String = "Disabled in module settings"): FeatureInstallResult =
             FeatureInstallResult(FeatureState.DISABLED, message)
-
         fun unsupported(message: String): FeatureInstallResult =
             FeatureInstallResult(FeatureState.UNSUPPORTED, message)
-
         fun degraded(message: String): FeatureInstallResult =
             FeatureInstallResult(FeatureState.DEGRADED, message)
-
         fun failed(message: String): FeatureInstallResult =
             FeatureInstallResult(FeatureState.FAILED, message)
     }
@@ -211,7 +204,7 @@ private fun productionFeatureInstallationModule(): FeatureInstallationModule {
             ),
             FeatureInstallationPlan(
                 feature = LyricsTypefaceFeature(),
-                registerResources = lyricsTypefaceSession::registerResources,
+                registerResources = { lyricsTypefaceSession.registerResources() },
             ),
             FeatureInstallationPlan(feature = CurrentSongIdentityFeature()),
             FeatureInstallationPlan(feature = LibraryRefreshFeature()),
@@ -220,11 +213,13 @@ private fun productionFeatureInstallationModule(): FeatureInstallationModule {
             FeatureInstallationPlan(feature = CustomLyricsFeature()),
         ),
         installLayoutInflationHooks = LayoutInflationRegistry::install,
-        registerApplicationCreated = { config, targetClassLoader, onCreated ->
+        registerApplicationCreated = { configProvider, targetClassLoader, onCreated ->
             val onCreate = Application::class.java.getDeclaredMethod("onCreate")
             ModernXposedRuntime.hookMethod(onCreate, object : ModernMethodHook() {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     val application = param.thisObject as Application
+                    val config = configProvider(application)
+                    lyricsTypefaceSession.setConfig(config)
                     onCreated {
                         HookContext(
                             config = config,
