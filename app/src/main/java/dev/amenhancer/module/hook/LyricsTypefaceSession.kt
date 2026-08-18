@@ -24,7 +24,6 @@ import java.util.concurrent.Executors
 /** The verified Apple Music layout names that may contain player lyric text. */
 internal object LyricsTypefaceLayoutContract {
     const val INSTRUMENTAL_LAYOUT_NAME = "lyrics_line_instrumental"
-
     val layoutNames: List<String> = listOf(
         "lyrics_line",
         "lyrics_line_karaoke",
@@ -75,7 +74,6 @@ internal class LyricsTypefaceSession {
     private val delayedApplyGate = DelayedApplyGate()
     private val styleTypefaceCache = HashMap<Int, Typeface>()
     private val failedTypefaceStyles = HashSet<Int>()
-
     private var config: TargetConfigClient? = null
     private var resourcesRegistered = false
 
@@ -89,9 +87,8 @@ internal class LyricsTypefaceSession {
         }
     }
 
-    fun registerResources(config: TargetConfigClient) {
+    fun registerResources() {
         synchronized(lock) {
-            this.config = config
             if (resourcesRegistered) return
             resourcesRegistered = true
         }
@@ -104,6 +101,11 @@ internal class LyricsTypefaceSession {
                 installRowLayoutChangeObserver(root)
             }
         }
+    }
+
+    /** Called once the target Application is created and config is available. */
+    fun setConfig(config: TargetConfigClient) {
+        synchronized(lock) { this.config = config }
     }
 
     /**
@@ -258,7 +260,6 @@ internal class LyricsTypefaceSession {
                 "Remote font file could not be duplicated for verification",
             )
         }
-
         return try {
             ParcelFileDescriptor.AutoCloseInputStream(duplicate).use { input ->
                 val digest = MessageDigest.getInstance("SHA-256")
