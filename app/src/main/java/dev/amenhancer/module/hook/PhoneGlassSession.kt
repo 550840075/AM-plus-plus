@@ -202,8 +202,8 @@ internal open class PhoneGlassSession(
 
     protected open fun resolveBottomNavigationRoot(): View? = find("bottom_navigation_root_stacked")
 
-    // The stacked native holder reserves miniplayer_height even when mini is hidden,
-    // on top of the tabs height and the bottom inset.
+    // The stacked native holder (also installed by the tablet dual-pane adaptation)
+    // reserves miniplayer_height even when mini is hidden, plus tabs and bottom inset.
     protected open fun nativePeekBaseline(): Int =
         bottomInset + dimen("navigation_tabs_height") + dimen("miniplayer_height")
 

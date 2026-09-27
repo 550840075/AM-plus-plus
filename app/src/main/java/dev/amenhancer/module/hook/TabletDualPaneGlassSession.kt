@@ -169,9 +169,6 @@ internal class TabletDualPaneGlassSession(
     override fun resolveBottomNavigationRoot(): View? =
         find("bottom_navigation_root_flat") ?: find("bottom_navigation_root_stacked")
 
-    // The flat holder reserves miniplayer_height only (no navigation_tabs_height).
-    override fun nativePeekBaseline(): Int = bottomInset + dimen("miniplayer_height")
-
     /** The elevated tabs frame sits above player_container. Keep its full-width fade
      * below both capsules so it cannot wash over the mini player's glass. */
     override fun attachNavigationScrim(frame: FrameLayout, scrim: GlassHostView) {
