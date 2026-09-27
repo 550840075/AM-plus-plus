@@ -1,10 +1,15 @@
 package dev.amenhancer.module.hook
 
 import android.app.Activity
+import android.view.MotionEvent
 import android.view.View
+import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
+import dev.amenhancer.glass.GlassCapsuleBounds
 import dev.amenhancer.glass.GlassGeometry
 import dev.amenhancer.glass.GlassPolicy
+import dev.amenhancer.glass.TabletGlassLayoutPolicy
+import dev.amenhancer.glass.TabletGlassGestureGate
 import dev.amenhancer.module.config.TargetConfigClient
 import kotlin.math.exp
 
@@ -21,7 +26,21 @@ internal class TabletDualPaneGlassSession(
     failure: (Throwable) -> Unit,
 ) : PhoneGlassSession(activity, config, failure) {
 
+    private val touchGate = TabletGlassGestureGate()
+    private var miniPressDownTime: Long? = null
+    private var redirectedMiniDownTime: Long? = null
+    private var redirectedMiniTarget: FrameLayout? = null
+    private var artworkAnchorView: View? = null
+    private var artworkStartOffsetY: Float? = null
+
+    private data class CapsuleHit(val any: Boolean, val mini: Boolean)
+
     override val geometry: GlassGeometry get() = GlassGeometry.Tablet
+
+    // Reveal the native cover at the first slide only after its alignment hook
+    // has identified this player's artwork. Other host builds keep the stock fade.
+    protected override fun playerFragmentsAlphaFactor(progress: Float, materialProgress: Float): Float =
+        if (progress > 0f && artworkAnchorView === find("fullplayerSongImage")) 1f else materialProgress
 
     // User sketch (2026-09-22): both capsules share one bottom row — the nav
     // pill on the left (65% of a two-thirds-wide row), the mini pill in the
@@ -32,11 +51,107 @@ internal class TabletDualPaneGlassSession(
         if (mini) intArrayOf(frameWidth * 19 / 30, frameWidth / 6)
         else intArrayOf(frameWidth / 6, frameWidth * 2 / 5)
 
-    // The native mini tap listener is unreliable in the side-by-side row (taps
-    // fell through to the invisible native tab strip and switched its tabs), so
-    // the mini content — exactly the mini slot bounds — owns tap-to-expand.
-    override fun armMiniTap(content: View) {
-        content.setOnClickListener { expandPlayer() }
+    /** Keep Apple's scaled artwork inside the opening mini glass. */
+    internal fun alignNativeArtworkStart(artwork: View, slide: Float) {
+        if (!activated || !slide.isFinite() || artwork !== find("fullplayerSongImage")) return
+        val container = artwork.parent as? View ?: return
+        if (container.id != resourceId("artwork_container", "id")) return
+        if (artworkAnchorView !== artwork) {
+            artworkAnchorView = artwork
+            artworkStartOffsetY = null
+        }
+        val progress = slide.coerceIn(0f, 1f)
+        val miniCover = miniRoot?.findViewById<View>(resourceId("video_surface_container", "id"))
+        if (progress <= 0.001f && artwork.scaleY < 0.2f) {
+            if (miniCover != null && miniCover.width > 0 && miniCover.height > 0) {
+                val source = IntArray(2).also(miniCover::getLocationOnScreen)
+                val target = IntArray(2).also(artwork::getLocationOnScreen)
+                artworkStartOffsetY = (source[1] - target[1]).toFloat()
+            }
+        }
+        // offsetDescendantRectToMyCoords in the native callback omits the
+        // dual-pane artwork_container's visual translation. This shift restores
+        // the thumbnail's actual screen origin and fades out at the full view.
+        val sourceCorrection = artworkStartOffsetY ?: -container.translationY
+        artwork.translationY += sourceCorrection * (1f - progress)
+        if (progress > 0f && miniCover != null && miniCover.width > 0 && miniCover.height > 0) {
+            val source = IntArray(2).also(miniCover::getLocationOnScreen)
+            val target = IntArray(2).also(artwork::getLocationOnScreen)
+            // Apple's full cover can run above the glass while the sheet is still
+            // opening. Its native scale and horizontal motion remain untouched.
+            if (target[1] < source[1]) artwork.translationY += (source[1] - target[1]).toFloat()
+        }
+    }
+
+    /** Both native touch owners are full-width; only the rendered capsules accept a down. */
+    override fun shouldPassThroughTouch(view: View, event: MotionEvent): Boolean {
+        if (view !== hostRoot && view !== playerSheet && view !== miniRoot) return false
+        return passesThrough(event)
+    }
+
+    override fun shouldBypassPlayerIntercept(event: MotionEvent): Boolean = passesThrough(event)
+
+    override fun dispatchCollapsedMiniTouch(view: View, event: MotionEvent): Boolean? {
+        if (view.id != resourceId("player_root", "id") || view !== find("player_root")) return null
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            redirectedMiniTarget = miniRoot?.takeIf {
+                activated && isCollapsed && it.isShown && capsuleHit(event)?.mini == true
+            }
+            redirectedMiniDownTime = event.downTime.takeIf { redirectedMiniTarget != null }
+        }
+        val target = redirectedMiniTarget?.takeIf { redirectedMiniDownTime == event.downTime } ?: return null
+        val location = IntArray(2).also(target::getLocationOnScreen)
+        val forwarded = MotionEvent.obtain(event)
+        forwarded.setLocation(event.rawX - location[0], event.rawY - location[1])
+        return try {
+            target.dispatchTouchEvent(forwarded)
+        } finally {
+            forwarded.recycle()
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                redirectedMiniTarget = null
+                redirectedMiniDownTime = null
+            }
+        }
+    }
+
+    private fun passesThrough(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            val accepted = !activated || !isCollapsed || capsuleHit(event)?.any != false
+            return touchGate.start(event.downTime, hitCapsule = accepted)
+        }
+        // Keep the initial target for the whole gesture, including a move into a capsule.
+        // The next DOWN resets this latch; multiple hooks may see the same UP/CANCEL.
+        return touchGate.isPassedThrough(event.downTime)
+    }
+
+    override fun observeTouch(event: MotionEvent) {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            miniPressDownTime = event.downTime.takeIf { capsuleHit(event)?.mini == true }
+        }
+        if (miniPressDownTime == event.downTime) super.observeTouch(event)
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            miniPressDownTime = null
+        }
+    }
+
+    private fun capsuleHit(event: MotionEvent): CapsuleHit? {
+        val frame = navFrame ?: return null
+        val navigation = navGlass?.takeIf { it.isShown && it.width > 0 && it.height > 0 } ?: return null
+        val mini = if (miniVisible) miniGlass?.takeIf { it.isShown && it.width > 0 && it.height > 0 } ?: return null else null
+        val origin = IntArray(2).also(frame::getLocationOnScreen)
+        val x = event.rawX - origin[0]
+        val y = event.rawY - origin[1]
+        fun bounds(view: View): GlassCapsuleBounds {
+            val location = IntArray(2).also(view::getLocationOnScreen)
+            val left = (location[0] - origin[0]).toFloat()
+            val top = (location[1] - origin[1]).toFloat()
+            return GlassCapsuleBounds(left, top, left + view.width, top + view.height)
+        }
+        val miniBounds = mini?.let(::bounds)
+        return CapsuleHit(
+            any = TabletGlassLayoutPolicy.containsEither(x, y, bounds(navigation), miniBounds),
+            mini = miniBounds?.let { TabletGlassLayoutPolicy.contains(x, y, it) } == true,
+        )
     }
 
     // The session lives only while the official tablet runs the dual-pane player;

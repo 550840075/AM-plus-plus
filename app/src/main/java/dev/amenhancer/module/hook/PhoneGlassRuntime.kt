@@ -85,6 +85,18 @@ internal object PhoneGlassRuntime {
         if (hooksInstalled) return
         check(!hooksAttempted) { "Glass hook installation previously failed; restart the host to retry" }
         hooksAttempted = true
+        val behavior = loader.loadClass("com.apple.android.music.player.PlayerBottomSheetBehavior")
+        // The host obfuscates this override's name; the Coordinator/View/MotionEvent
+        // signature is the verified interception seam on the supported builds.
+        val intercept = behavior.declaredMethods.single { candidate ->
+            val parameters = candidate.parameterTypes
+            candidate.returnType == Boolean::class.javaPrimitiveType &&
+                parameters.size == 3 &&
+                parameters[0].name == "androidx.coordinatorlayout.widget.CoordinatorLayout" &&
+                View::class.java.isAssignableFrom(parameters[1]) &&
+                parameters[2] == MotionEvent::class.java
+        }.apply { isAccessible = true }
+        val peek = method(behavior, "F", Int::class.javaPrimitiveType!!, Boolean::class.javaPrimitiveType!!)
         // The stacked and flat holders each drive their own slide contract; the outer
         // activity reflection resolves both holder shapes.
         for (holderName in listOf("StackedBottomNavigationHolder", "FlatBottomNavigationHolder")) {
@@ -99,11 +111,26 @@ internal object PhoneGlassRuntime {
         ModernXposedRuntime.hookMethod(ViewGroup::class.java.getDeclaredMethod("dispatchTouchEvent", MotionEvent::class.java), object : ModernMethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 val root = param.thisObject as? View ?: return
-                sessions.values.firstOrNull { it.miniRoot === root }?.observeTouch(param.args[0] as MotionEvent)
+                val event = param.args[0] as MotionEvent
+                if (sessions.values.any { it.shouldPassThroughTouch(root, event) }) {
+                    param.result = false
+                    return
+                }
+                sessions.values.firstNotNullOfOrNull { it.dispatchCollapsedMiniTouch(root, event) }?.let {
+                    param.result = it
+                    return
+                }
+                sessions.values.firstOrNull { it.miniRoot === root }?.observeTouch(event)
             }
         })
-        val behavior = loader.loadClass("com.apple.android.music.player.PlayerBottomSheetBehavior")
-        val peek = method(behavior, "F", Int::class.javaPrimitiveType!!, Boolean::class.javaPrimitiveType!!)
+        ModernXposedRuntime.hookMethod(intercept, object : ModernMethodHook() {
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                val event = param.args.getOrNull(2) as? MotionEvent ?: return
+                if (sessions.values.any { it.playerBehavior === param.thisObject && it.shouldBypassPlayerIntercept(event) }) {
+                    param.result = false
+                }
+            }
+        })
         ModernXposedRuntime.hookMethod(peek, object : ModernMethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 sessions.values.firstOrNull { it.playerBehavior === param.thisObject }?.let {
@@ -112,6 +139,24 @@ internal object PhoneGlassRuntime {
                 }
             }
         })
+        // Apple's artwork callback computes the cover transform from the mini
+        // thumbnail and then writes it each slide frame. Apply the tablet-only
+        // source alignment after that write, leaving its scale and the glass
+        // transition untouched. The callback is optional on other host builds.
+        runCatching {
+            val callback = loader.loadClass("com.apple.android.music.player.fragment.v0\$k")
+            val artworkField = callback.getDeclaredField("a").apply { isAccessible = true }
+            val slideMethod = callback.getDeclaredMethod("c", Float::class.javaPrimitiveType!!)
+            ModernXposedRuntime.hookMethod(slideMethod, object : ModernMethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    val artwork = artworkField.get(param.thisObject) as? View ?: return
+                    val progress = (param.args[0] as? Number)?.toFloat() ?: return
+                    sessions.values.forEach { session ->
+                        (session as? TabletDualPaneGlassSession)?.alignNativeArtworkStart(artwork, progress)
+                    }
+                }
+            })
+        }
         // Apple's scrolling behavior reserves bottom padding on the content host.
         // Redirect it before setPadding rather than fighting it with another layout every frame.
         ModernXposedRuntime.hookMethod(View::class.java.getDeclaredMethod("setPadding", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType), object : ModernMethodHook() {

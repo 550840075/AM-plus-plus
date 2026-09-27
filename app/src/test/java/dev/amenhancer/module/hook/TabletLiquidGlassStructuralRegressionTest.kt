@@ -86,11 +86,16 @@ class TabletLiquidGlassStructuralRegressionTest {
     fun `owns the row band touch chain`() {
         val session = source("dev/amenhancer/module/hook/TabletDualPaneGlassSession.kt")
         val base = source("dev/amenhancer/module/hook/PhoneGlassSession.kt")
-        // The invisible native tab strip must never eat row-band taps, and the
-        // side-by-side mini content arms its own tap-to-expand fallback.
+        val runtime = source("dev/amenhancer/module/hook/PhoneGlassRuntime.kt")
+        // The invisible native tabs stay gone, while the full-width roots and
+        // player behavior pass blank-area gestures to the underlying page.
         assertTrue(base.contains("hideSeam(navigation)"))
-        assertTrue(session.contains("setOnClickListener { expandPlayer() }"))
-        assertTrue(base.contains("getMethod(\"setState\""))
+        assertTrue(session.contains("TabletGlassLayoutPolicy.containsEither"))
+        assertTrue(runtime.contains("it.shouldPassThroughTouch(root, event)"))
+        assertTrue(runtime.contains("it.shouldBypassPlayerIntercept(event)"))
+        // Apple binds both native click and long-click to mini_player_touch_panel.
+        assertTrue(!session.contains("setOnClickListener"))
+        assertTrue(!base.contains("getMethod(\"setState\""))
     }
 
     @Test

@@ -60,9 +60,9 @@ internal open class PhoneGlassSession(
     private var navigation: View? = null
     private var source: ViewGroup? = null
     private var backdrop: ViewBackdrop? = null
-    private var navGlass: GlassHostView? = null
+    protected var navGlass: GlassHostView? = null
     private var navScrim: GlassHostView? = null
-    private var miniGlass: GlassHostView? = null
+    protected var miniGlass: GlassHostView? = null
     final override var miniRoot: FrameLayout? = null
         private set
     private var miniContent: View? = null
@@ -72,6 +72,7 @@ internal open class PhoneGlassSession(
     private var closed = false
     private var failureScheduled = false
     protected var hostRoot: View? = null
+    protected var playerSheet: View? = null
     final override var activated = false
         private set
     private var tabs by mutableStateOf(emptyList<GlassTab>())
@@ -82,6 +83,7 @@ internal open class PhoneGlassSession(
     private var menuKey: List<Any?> = emptyList()
     private val input = NativeButtonInput()
     private var slide = 0f
+    protected val isCollapsed: Boolean get() = slide <= 0.001f
     private var glassExpansion by androidx.compose.runtime.mutableFloatStateOf(0f)
     private var miniOffsetInSheet = 0
     private var navMarginPx = intArrayOf(0, 0)
@@ -117,6 +119,8 @@ internal open class PhoneGlassSession(
     /** Capsule geometry shared by every occupied-height consumer; a diverging form overrides this. */
     protected open val geometry: GlassGeometry get() = GlassGeometry.Phone
 
+    protected open fun playerFragmentsAlphaFactor(progress: Float, materialProgress: Float): Float = materialProgress
+
     /**
      * Horizontal slot of a floating capsule as [left, right] margins. The phone
      * keeps the tuned symmetric margins; the tablet row carves asymmetric slots
@@ -125,17 +129,6 @@ internal open class PhoneGlassSession(
     protected open fun capsuleMarginsPx(frameWidth: Int, mini: Boolean): IntArray {
         val side = dp(geometry.horizontalDp)
         return intArrayOf(side, side)
-    }
-
-    /** Tablet-only fallback: the side-by-side mini drives its own tap-to-expand. */
-    protected open fun armMiniTap(content: View) = Unit
-
-    /** Expand driver for the armed mini tap; behavior state 3 = expanded. */
-    protected fun expandPlayer() {
-        val behavior = playerBehavior ?: return
-        runCatching {
-            behavior.javaClass.getMethod("setState", Int::class.javaPrimitiveType!!).invoke(behavior, 3)
-        }
     }
 
     // Resource IDs are stable for this Activity's host APK. Keep values and Views live so
@@ -278,6 +271,7 @@ internal open class PhoneGlassSession(
             // The native mini container disappears early in the opening animation.
             // Keep the material behind the whole sheet, independent of that container.
             val surfaceParent = find("player_sheet_container") as? FrameLayout ?: root
+            playerSheet = surfaceParent
             surfaceParent.addView(glass, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(geometry.miniHeightDp), Gravity.TOP).apply {
                 val slot = capsuleMarginsPx(0, mini = true)
                 leftMargin = slot[0]; rightMargin = slot[1]
@@ -390,6 +384,7 @@ internal open class PhoneGlassSession(
         // Read the laid-out native state before changing peek height or hiding any layer.
         val sheet = find("player_sheet_container") ?: return
         if (!sheet.isLaidOut) return
+        playerSheet = sheet
         val behavior = checkNotNull(playerBehavior)
         val base = activity.classLoader.loadClass("com.google.android.material.bottomsheet.BottomSheetBehavior")
         val state = base.getDeclaredField("G").apply { isAccessible = true }.getInt(behavior)
@@ -449,7 +444,6 @@ internal open class PhoneGlassSession(
                 }
             }
         }
-        miniContent?.let(::armMiniTap)
         listOf("player_root", "player_top_shadow", "background_layers", "motion_switcher", "player_fragments_host").mapNotNull(::find).forEach(::save)
     }
 
@@ -604,8 +598,11 @@ internal open class PhoneGlassSession(
             val desired = if (progress == 0f) null else original.outlineProvider
             if (v.outlineProvider !== desired) v.outlineProvider = desired
         }
-        listOf("player_top_shadow", "background_layers", "player_fragments_host").mapNotNull(::find).forEach { v ->
+        listOf("player_top_shadow", "background_layers").mapNotNull(::find).forEach { v ->
             applyLayerAlpha(v, materialProgress)
+        }
+        find("player_fragments_host")?.let { v ->
+            applyLayerAlpha(v, playerFragmentsAlphaFactor(progress, materialProgress))
         }
         // The motion subtree includes rectangular legibility/blur overlays and can
         // still have thumbnail-sized bounds early in the native transition. Reveal
@@ -636,6 +633,13 @@ internal open class PhoneGlassSession(
     override fun redirectedPadding(view: Any?): Int? = if (activated && view === source) {
         if (underlap) 0 else if (navFrame?.isShown == true) GlassPolicy.occupiedHeight(density, bottomInset, miniVisible, bottomGapDp, geometry) else 0
     } else null
+
+    // Only the tablet form narrows the full-width host touch surfaces.
+    override fun shouldPassThroughTouch(view: View, event: MotionEvent): Boolean = false
+
+    override fun shouldBypassPlayerIntercept(event: MotionEvent): Boolean = false
+
+    override fun dispatchCollapsedMiniTouch(view: View, event: MotionEvent): Boolean? = null
 
     private fun miniGlassPosition(event: MotionEvent): Pair<Float, Float>? {
         val glass = miniGlass ?: return null
@@ -679,6 +683,7 @@ internal open class PhoneGlassSession(
         if (closed) return
         closed = true
         activated = false
+        playerSheet = null
         attachHandler.removeCallbacks(retryAttach)
         retryPending = false
         observer?.takeIf { it.isAlive }?.removeOnPreDrawListener(this)
