@@ -55,6 +55,10 @@ internal open class PhoneGlassSession(
 ) : GlassSession, ViewTreeObserver.OnPreDrawListener {
     private val states = IdentityHashMap<View, NativeViewState>()
     private val layerAlphas = IdentityHashMap<View, NativeLayerAlpha>()
+    private val visibleGlassRect = android.graphics.Rect()
+    private val visibleGlassLocation = IntArray(2)
+    private val windowLocation = IntArray(2)
+    private var glassConsumersVisible = false
     private var writingLayerAlpha = false
     protected var navFrame: FrameLayout? = null
     private var navigation: View? = null
@@ -367,11 +371,19 @@ internal open class PhoneGlassSession(
                 navigation?.alpha = if (menuReady) 0f else 1f
                 updateGeometry()
                 val sourceNeedsLayout = updateUnderlap()
-                updateTransition()
+                val transitionNeedsLayout = updateTransition()
                 // Insets can be reapplied when the native player finishes collapsing.
                 // setLayoutParams only schedules layout: do not expose the old, shorter
                 // content bounds (and window background beneath them) in this frame.
-                if (sourceNeedsLayout) return false
+                if (sourceNeedsLayout || transitionNeedsLayout ||
+                    (glassConsumersVisible && backdrop?.ready == false && canRefreshBackdrop())) return false
+            } else if (backdrop?.ready == true) {
+                // Keep the initial capture for activation, but stop recording while
+                // the menu has not produced a visible glass surface yet.
+                backdrop?.setCaptureEnabled(
+                    backdropConsumerVisible(navGlass) || backdropConsumerVisible(navScrim) ||
+                        backdropConsumerVisible(miniGlass),
+                )
             }
         } catch (error: Throwable) { scheduleFailure(error) }
         return true
@@ -553,7 +565,7 @@ internal open class PhoneGlassSession(
         return sourceNeedsLayout
     }
 
-    private fun updateTransition() {
+    private fun updateTransition(): Boolean {
         suppressNativeChromeSeams()
         navFrame?.background = null
         // Keep Z ordering (also used for touch dispatch); remove only the old
@@ -568,30 +580,40 @@ internal open class PhoneGlassSession(
         }
         val materialProgress = blend(0f, 0.35f)
         glassExpansion = materialProgress
+        val miniAlpha = if (!miniVisible && progress == 0f) 0f else 1f - blend(0.35f, 0.6f)
+        val hideTransparentMiniGlass = miniAlpha <= 0f
+        var revivedMiniGlass = false
         miniGlass?.let { glass ->
-            val sheet = glass.parent as? FrameLayout
-            if (sheet != null && sheet !== miniRoot) {
-                if (miniVisible && progress == 0f) {
-                    val miniPosition = IntArray(2).also { miniRoot?.getLocationInWindow(it) }
-                    val sheetPosition = IntArray(2).also(sheet::getLocationInWindow)
-                    miniOffsetInSheet = miniPosition[1] - sheetPosition[1]
-                }
-                // Per-edge morph (tablet row): each side interpolates from its own
-                // slot edge to zero, so the pill unfolds from its bottom-right
-                // anchor into the full sheet while the sheet slides up.
-                val left = (miniMarginPx[0] * (1f - materialProgress)).roundToInt()
-                val right = (miniMarginPx[1] * (1f - materialProgress)).roundToInt()
-                val top = (miniOffsetInSheet * (1f - materialProgress)).roundToInt()
-                val collapsedHeight = dp(geometry.miniHeightDp)
-                val height = (collapsedHeight + (sheet.height - collapsedHeight) * progress).roundToInt().coerceAtLeast(collapsedHeight)
-                val params = glass.layoutParams as FrameLayout.LayoutParams
-                if (params.height != height || params.topMargin != top || params.leftMargin != left || params.rightMargin != right) {
-                    params.height = height; params.topMargin = top
-                    params.leftMargin = left; params.rightMargin = right
-                    glass.layoutParams = params
+            if (!hideTransparentMiniGlass) {
+                val sheet = glass.parent as? FrameLayout
+                if (sheet != null && sheet !== miniRoot) {
+                    if (miniVisible && progress == 0f) {
+                        val miniPosition = IntArray(2).also { miniRoot?.getLocationInWindow(it) }
+                        val sheetPosition = IntArray(2).also(sheet::getLocationInWindow)
+                        miniOffsetInSheet = miniPosition[1] - sheetPosition[1]
+                    }
+                    // Per-edge morph (tablet row): each side interpolates from its own
+                    // slot edge to zero, so the pill unfolds from its bottom-right
+                    // anchor into the full sheet while the sheet slides up.
+                    val left = (miniMarginPx[0] * (1f - materialProgress)).roundToInt()
+                    val right = (miniMarginPx[1] * (1f - materialProgress)).roundToInt()
+                    val top = (miniOffsetInSheet * (1f - materialProgress)).roundToInt()
+                    val collapsedHeight = dp(geometry.miniHeightDp)
+                    val height = (collapsedHeight + (sheet.height - collapsedHeight) * progress).roundToInt().coerceAtLeast(collapsedHeight)
+                    val params = glass.layoutParams as FrameLayout.LayoutParams
+                    if (params.height != height || params.topMargin != top || params.leftMargin != left || params.rightMargin != right) {
+                        params.height = height; params.topMargin = top
+                        params.leftMargin = left; params.rightMargin = right
+                        glass.layoutParams = params
+                    }
                 }
             }
-            glass.alpha = if (!miniVisible && progress == 0f) 0f else 1f - blend(0.35f, 0.6f)
+            if (glass.alpha != miniAlpha) glass.alpha = miniAlpha
+            val visibility = if (hideTransparentMiniGlass) View.GONE else View.VISIBLE
+            if (glass.visibility != visibility) {
+                revivedMiniGlass = visibility == View.VISIBLE
+                glass.visibility = visibility
+            }
         }
         find("player_sheet_container")?.let { v ->
             val original = save(v)
@@ -611,7 +633,39 @@ internal open class PhoneGlassSession(
             applyLayerAlpha(v, blend(0.6f, 0.85f))
         }
         find("player_root")?.background = if (materialProgress < 1f) null else states[find("player_root")]?.background
+        // The flat tablet row is parked offscreen at 60%; the stacked phone row
+        // moves under native control, so test its actual window bounds instead.
+        val consumerVisible = !(geometry.sideBySide && progress >= 0.6f) &&
+            ((revivedMiniGlass && miniAlpha > 0f) ||
+                backdropConsumerVisible(navGlass) || backdropConsumerVisible(navScrim) ||
+                backdropConsumerVisible(miniGlass))
+        glassConsumersVisible = consumerVisible
+        val captureResumed = backdrop?.setCaptureEnabled(consumerVisible) == true
+        return revivedMiniGlass || captureResumed
     }
+
+    private fun backdropConsumerVisible(view: View?): Boolean {
+        if (view == null || !view.isAttachedToWindow || !view.isShown || view.width <= 0 || view.height <= 0) return false
+        var ancestor: View? = view
+        while (ancestor != null) {
+            if (ancestor.alpha <= 0f) return false
+            ancestor = ancestor.parent as? View
+        }
+        if (!view.getGlobalVisibleRect(visibleGlassRect)) return false
+        // clipChildren=false can report an offscreen row as globally visible.
+        // Its translated screen bounds must still intersect this window.
+        view.getLocationOnScreen(visibleGlassLocation)
+        val window = activity.window.decorView
+        window.getLocationOnScreen(windowLocation)
+        return visibleGlassLocation[0] < windowLocation[0] + window.width &&
+            visibleGlassLocation[0] + view.width > windowLocation[0] &&
+            visibleGlassLocation[1] < windowLocation[1] + window.height &&
+            visibleGlassLocation[1] + view.height > windowLocation[1]
+    }
+
+    private fun canRefreshBackdrop(): Boolean = source?.let {
+        it.isAttachedToWindow && it.width > 0 && it.height > 0
+    } == true
 
     override fun onSlide(progress: Float) { slide = progress.coerceIn(0f, 1f) }
 

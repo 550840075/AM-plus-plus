@@ -11,6 +11,7 @@ import dev.amenhancer.glass.GlassPolicy
 import dev.amenhancer.glass.TabletGlassLayoutPolicy
 import dev.amenhancer.glass.TabletGlassGestureGate
 import dev.amenhancer.module.config.TargetConfigClient
+import kotlin.math.abs
 import kotlin.math.exp
 
 /**
@@ -172,7 +173,12 @@ internal class TabletDualPaneGlassSession(
     override fun driveNavFrameExit(progress: Float) {
         val frame = navFrame ?: return
         val extent = GlassPolicy.occupiedHeight(density, bottomInset, miniVisible, bottomGapDp, geometry)
-        frame.translationY = (1f - exp(-20f * progress)) * extent
+        // Past the glass fade the exponential tail moves by less than a pixel.
+        // Park the row exactly offscreen and avoid subpixel invalidations.
+        val target = if (progress >= 0.6f) extent.toFloat() else (1f - exp(-20f * progress)) * extent
+        if (progress == 0f || progress >= 0.6f || progress < 0.35f || abs(frame.translationY - target) >= 0.5f) {
+            if (frame.translationY != target) frame.translationY = target
+        }
     }
 
     // The dual-pane boundary sync mutes its own writes while the glass owns the geometry.
