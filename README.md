@@ -137,6 +137,8 @@ AM++ 通过 libxposed API 102 注入 Apple Music（`com.apple.android.music`）�
 
 自定义歌词支持编辑、删除和按名称或 Apple Music ID 搜索，也支持 ZIP 备份与恢复，恢复时可以选择覆盖冲突项或保留当前版本。校验不通过的 TTML 会被拒绝，此时保留 Apple Music 原歌词。从 AMLL 取回的 TTML 会先转换成 Apple Music 格式再填入编辑框。
 
+手动编写 TTML 时可参考 [Apple Music TTML 格式说明](docs/apple-music-ttml-format.md)。
+
 “自动实时补全”开启后，播放中检测到原生歌词缺失、不是逐字时间轴、或外语逐字歌词缺翻译，且没有可用手动歌词时，才会请求候选歌词；关闭后播放过程中不再请求。手动导入始终由用户主动触发。
 
 Lunabeat 会缓存 manifest 和歌曲索引，只在远端 revision 变化时重新下载。
