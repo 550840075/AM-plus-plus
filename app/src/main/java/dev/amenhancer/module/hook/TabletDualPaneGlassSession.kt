@@ -3,10 +3,12 @@ package dev.amenhancer.module.hook
 import android.app.Activity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import dev.amenhancer.glass.GlassCapsuleBounds
 import dev.amenhancer.glass.GlassGeometry
+import dev.amenhancer.glass.GlassHostView
 import dev.amenhancer.glass.GlassPolicy
 import dev.amenhancer.glass.TabletGlassLayoutPolicy
 import dev.amenhancer.glass.TabletGlassGestureGate
@@ -167,6 +169,17 @@ internal class TabletDualPaneGlassSession(
     // The flat holder reserves miniplayer_height only (no navigation_tabs_height).
     override fun nativePeekBaseline(): Int = bottomInset + dimen("miniplayer_height")
 
+    /** The elevated tabs frame sits above player_container. Keep its full-width fade
+     * below both capsules so it cannot wash over the mini player's glass. */
+    override fun attachNavigationScrim(frame: FrameLayout, scrim: GlassHostView) {
+        val container = find("player_container") as? ViewGroup
+            ?: return super.attachNavigationScrim(frame, scrim)
+        val height = frame.height.takeIf { it > 0 }
+            ?: frame.layoutParams?.height?.takeIf { it > 0 }
+            ?: GlassPolicy.occupiedHeight(density, bottomInset, miniVisible, bottomGapDp, geometry)
+        container.addView(scrim, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
     // The flat holder never translates the tabs frame, so the capsule exit is driven here
     // with the phone StackedBottomNavigationHolder.c exp(-20t) curve over the whole glass
     // occupied height (navigation capsule + mini); slide back to 0 parks the capsule again.
@@ -179,6 +192,14 @@ internal class TabletDualPaneGlassSession(
         if (progress == 0f || progress >= 0.6f || progress < 0.35f || abs(frame.translationY - target) >= 0.5f) {
             if (frame.translationY != target) frame.translationY = target
         }
+        val scrim = navScrim ?: return
+        val container = scrim.parent as? ViewGroup ?: return
+        if (frame.height > 0 && scrim.layoutParams.height != frame.height) {
+            scrim.layoutParams = scrim.layoutParams.apply { height = frame.height }
+        }
+        val baseOffset = frame.top - (container.top + scrim.top)
+        val scrimShift = frame.translationY + baseOffset
+        if (scrim.translationY != scrimShift) scrim.translationY = scrimShift
     }
 
     // The dual-pane boundary sync mutes its own writes while the glass owns the geometry.

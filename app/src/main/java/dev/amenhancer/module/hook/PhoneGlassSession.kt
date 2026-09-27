@@ -65,7 +65,7 @@ internal open class PhoneGlassSession(
     private var source: ViewGroup? = null
     private var backdrop: ViewBackdrop? = null
     protected var navGlass: GlassHostView? = null
-    private var navScrim: GlassHostView? = null
+    protected var navScrim: GlassHostView? = null
     protected var miniGlass: GlassHostView? = null
     final override var miniRoot: FrameLayout? = null
         private set
@@ -201,6 +201,11 @@ internal open class PhoneGlassSession(
     /** Capsule exit driver; the phone host translates the frame from its own holder. */
     protected open fun driveNavFrameExit(progress: Float) = Unit
 
+    /** Phone keeps its bottom fade inside the native tabs frame. */
+    protected open fun attachNavigationScrim(frame: FrameLayout, scrim: GlassHostView) {
+        frame.addView(scrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+    }
+
     /** Chrome ownership hand-off; only the dual-pane session arbitrates ownership. */
     protected open fun onGlassOwnership(root: View?) = Unit
 
@@ -244,7 +249,7 @@ internal open class PhoneGlassSession(
             scrim.alpha = 0f
             scrim.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             scrim.content { HostConfiguration { BottomScrim(bg) } }
-            frame.addView(scrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            attachNavigationScrim(frame, scrim)
             val glass = GlassHostView(moduleContext()).also { navGlass = it }
             glass.alpha = 0f
             glass.content { HostConfiguration { GlassNavigation(tabs, selectedId, accent, foreground, bg, ::selectTab, panelBlur = navBlurDp.dp) } }
