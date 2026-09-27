@@ -89,10 +89,12 @@ internal open class PhoneGlassSession(
     private var slide = 0f
     private var returningToMini = false
     protected val isCollapsed: Boolean get() = slide <= 0.001f
+    protected val glassMenuReady: Boolean get() = tabs.size > 1 && tabs.any { it.id == selectedId }
     private var glassExpansion by androidx.compose.runtime.mutableFloatStateOf(0f)
     private var miniOffsetInSheet = 0
     private var navMarginPx = intArrayOf(0, 0)
     private var miniMarginPx = intArrayOf(0, 0)
+    private var slottedMiniContent: View? = null
     private var lastPeek = -1
     private val nativePeek = NativePeekHeight()
     private val attachHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -165,10 +167,16 @@ internal open class PhoneGlassSession(
      */
     protected open fun suppressNativeChromeSeams() {
         hideSeam(find("navigation_tabs_divider"))
-        // The native tab strip stays alpha-hidden but touchable across its full
-        // width; invisible taps must never select a native menu item, so seam
-        // suppression owns its visibility too (restored on close like any seam).
-        hideSeam(navigation)
+        navigation?.let { nav ->
+            if (glassMenuReady) {
+                // An alpha-hidden native strip still accepts taps across its full width.
+                hideSeam(nav)
+                nav.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+            } else {
+                // A transient unmappable menu needs the native strip and its controls.
+                states[nav]?.restoreInteraction(nav)
+            }
+        }
     }
 
     protected fun hideSeam(view: View?) {
@@ -273,7 +281,8 @@ internal open class PhoneGlassSession(
             glass.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             glass.content {
                 HostConfiguration {
-                    NativeLiquidButton(bg, input, glassExpansion, panelBlur = navBlurDp.dp, autoClip = geometry.sideBySide) { sx, sy, x, y ->
+                    NativeLiquidButton(bg, input, glassExpansion, panelBlur = navBlurDp.dp, autoClip = geometry.sideBySide,
+                        miniHeightDp = geometry.miniHeightDp) { sx, sy, x, y ->
                         miniContent?.let { v -> v.scaleX = sx; v.scaleY = sy; v.translationX = x; v.translationY = y }
                     }
                 }
@@ -283,7 +292,7 @@ internal open class PhoneGlassSession(
             val surfaceParent = find("player_sheet_container") as? FrameLayout ?: root
             playerSheet = surfaceParent
             surfaceParent.addView(glass, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(geometry.miniHeightDp), Gravity.TOP).apply {
-                val slot = capsuleMarginsPx(0, mini = true)
+                val slot = capsuleMarginsPx(navFrame?.width ?: 0, mini = true)
                 leftMargin = slot[0]; rightMargin = slot[1]
             })
             if (activated) prepareMini()
@@ -365,15 +374,20 @@ internal open class PhoneGlassSession(
                 }
             }
             refreshMenu()
-            if (!activated && backdrop?.ready == true && navGlass?.isLaidOut == true && tabs.size > 1 && tabs.any { it.id == selectedId }) {
+            if (!activated && backdrop?.ready == true && navGlass?.isLaidOut == true && glassMenuReady) {
                 activate()
                 return false // Layout the new occupied area before exposing either surface.
             }
             if (activated) {
-                val menuReady = tabs.size > 1 && tabs.any { it.id == selectedId }
+                val menuReady = glassMenuReady
                 val navAlpha = if (menuReady) 1f else 0f
                 navGlass?.alpha = navAlpha
                 navScrim?.alpha = navAlpha
+                val navGlassRevealed = menuReady && navGlass?.visibility != View.VISIBLE
+                navGlass?.let { glass ->
+                    val visibility = if (menuReady) View.VISIBLE else View.GONE
+                    if (glass.visibility != visibility) glass.visibility = visibility
+                }
                 navigation?.alpha = if (menuReady) 0f else 1f
                 updateGeometry()
                 val sourceNeedsLayout = updateUnderlap()
@@ -381,7 +395,7 @@ internal open class PhoneGlassSession(
                 // Insets can be reapplied when the native player finishes collapsing.
                 // setLayoutParams only schedules layout: do not expose the old, shorter
                 // content bounds (and window background beneath them) in this frame.
-                if (sourceNeedsLayout || transitionNeedsLayout ||
+                if (navGlassRevealed || sourceNeedsLayout || transitionNeedsLayout ||
                     (glassConsumersVisible && backdrop?.ready == false && canRefreshBackdrop())) return false
             } else if (backdrop?.ready == true) {
                 // Keep the initial capture for activation, but stop recording while
@@ -445,7 +459,7 @@ internal open class PhoneGlassSession(
             val contentHeight = dp(minOf(GlassPolicy.MINI_HEIGHT_DP, geometry.miniHeightDp))
             params.height = contentHeight
             if (params is ViewGroup.MarginLayoutParams) {
-                val slot = capsuleMarginsPx(0, mini = true)
+                val slot = capsuleMarginsPx(navFrame?.width ?: 0, mini = true)
                 params.leftMargin = slot[0]; params.rightMargin = slot[1]
                 val topOffset = (dp(geometry.miniHeightDp) - contentHeight) / 2
                 if (topOffset != 0) params.topMargin = topOffset
@@ -474,20 +488,27 @@ internal open class PhoneGlassSession(
             // resync every surface whenever a resolved slot edge changes.
             val navSlot = capsuleMarginsPx(frame.width, mini = false)
             val miniSlot = capsuleMarginsPx(frame.width, mini = true)
-            if (!navSlot.contentEquals(navMarginPx) || !miniSlot.contentEquals(miniMarginPx)) {
+            fun applySlot(view: View?, slot: IntArray) {
+                val surface = view ?: return
+                val params = surface.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+                if (params.leftMargin != slot[0] || params.rightMargin != slot[1]) {
+                    params.leftMargin = slot[0]; params.rightMargin = slot[1]
+                    surface.layoutParams = params
+                }
+            }
+            val slotsChanged = !navSlot.contentEquals(navMarginPx) || !miniSlot.contentEquals(miniMarginPx)
+            if (slotsChanged) {
                 navMarginPx = navSlot
                 miniMarginPx = miniSlot
-                fun applySlot(view: View?, slot: IntArray) {
-                    val surface = view ?: return
-                    val params = surface.layoutParams as? ViewGroup.MarginLayoutParams ?: return
-                    if (params.leftMargin != slot[0] || params.rightMargin != slot[1]) {
-                        params.leftMargin = slot[0]; params.rightMargin = slot[1]
-                        surface.layoutParams = params
-                    }
-                }
                 applySlot(navGlass, navSlot)
                 applySlot(miniGlass, miniSlot)
+            }
+            // A new mini_player can arrive without a frame-width change. Its native
+            // content must still occupy the cached slot, without resetting the
+            // animated miniGlass margins on every transition frame.
+            if (slotsChanged || slottedMiniContent !== miniContent) {
                 applySlot(miniContent, miniSlot)
+                slottedMiniContent = miniContent
             }
         }
         val peek = peekHeight()
@@ -797,6 +818,10 @@ internal open class PhoneGlassSession(
         private val clipPadding = (view as? ViewGroup)?.clipToPadding
         val outlineProvider = view.outlineProvider
         private val transform = floatArrayOf(view.scaleX, view.scaleY, view.translationX, view.translationY)
+        fun restoreInteraction(view: View) {
+            if (view.visibility != visibility) view.visibility = visibility
+            if (view.importantForAccessibility != accessibility) view.importantForAccessibility = accessibility
+        }
         fun restoreScroll(view: View) {
             view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, padding[3])
             if (view is ViewGroup) clipPadding?.let { view.clipToPadding = it }

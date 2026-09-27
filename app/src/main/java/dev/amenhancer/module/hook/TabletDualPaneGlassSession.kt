@@ -119,7 +119,7 @@ internal class TabletDualPaneGlassSession(
 
     private fun passesThrough(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-            val accepted = !activated || !isCollapsed || capsuleHit(event)?.any != false
+            val accepted = !activated || !isCollapsed || !glassMenuReady || capsuleHit(event)?.any != false
             return touchGate.start(event.downTime, hitCapsule = accepted)
         }
         // Keep the initial target for the whole gesture, including a move into a capsule.
@@ -139,8 +139,9 @@ internal class TabletDualPaneGlassSession(
 
     private fun capsuleHit(event: MotionEvent): CapsuleHit? {
         val frame = navFrame ?: return null
-        val navigation = navGlass?.takeIf { it.isShown && it.width > 0 && it.height > 0 } ?: return null
-        val mini = if (miniVisible) miniGlass?.takeIf { it.isShown && it.width > 0 && it.height > 0 } ?: return null else null
+        val navigation = navGlass?.takeIf { it.isShown && it.width > 0 && it.height > 0 }
+        val mini = if (miniVisible) miniGlass?.takeIf { it.isShown && it.width > 0 && it.height > 0 } else null
+        if (navigation == null && mini == null) return null
         val origin = IntArray(2).also(frame::getLocationOnScreen)
         val x = event.rawX - origin[0]
         val y = event.rawY - origin[1]
@@ -150,10 +151,12 @@ internal class TabletDualPaneGlassSession(
             val top = (location[1] - origin[1]).toFloat()
             return GlassCapsuleBounds(left, top, left + view.width, top + view.height)
         }
+        val navBounds = navigation?.let(::bounds)
         val miniBounds = mini?.let(::bounds)
+        val miniHit = miniBounds?.let { TabletGlassLayoutPolicy.contains(x, y, it) } == true
         return CapsuleHit(
-            any = TabletGlassLayoutPolicy.containsEither(x, y, bounds(navigation), miniBounds),
-            mini = miniBounds?.let { TabletGlassLayoutPolicy.contains(x, y, it) } == true,
+            any = navBounds?.let { TabletGlassLayoutPolicy.containsEither(x, y, it, miniBounds) } ?: miniHit,
+            mini = miniHit,
         )
     }
 

@@ -87,9 +87,11 @@ class TabletLiquidGlassStructuralRegressionTest {
         val session = source("dev/amenhancer/module/hook/TabletDualPaneGlassSession.kt")
         val base = source("dev/amenhancer/module/hook/PhoneGlassSession.kt")
         val runtime = source("dev/amenhancer/module/hook/PhoneGlassRuntime.kt")
-        // The invisible native tabs stay gone, while the full-width roots and
-        // player behavior pass blank-area gestures to the underlying page.
-        assertTrue(base.contains("hideSeam(navigation)"))
+        // Hide native tabs while glass owns the menu, but restore them if the
+        // visible menu cannot be mapped. Blank-area gestures pass through.
+        assertTrue(base.contains("hideSeam(nav)"))
+        assertTrue(base.contains("restoreInteraction(nav)"))
+        assertTrue(session.contains("!glassMenuReady"))
         assertTrue(session.contains("TabletGlassLayoutPolicy.containsEither"))
         assertTrue(runtime.contains("it.shouldPassThroughTouch(root, event)"))
         assertTrue(runtime.contains("it.shouldBypassPlayerIntercept(event)"))
