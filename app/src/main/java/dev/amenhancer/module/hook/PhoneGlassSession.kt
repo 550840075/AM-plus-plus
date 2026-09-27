@@ -87,6 +87,7 @@ internal open class PhoneGlassSession(
     private var menuKey: List<Any?> = emptyList()
     private val input = NativeButtonInput()
     private var slide = 0f
+    private var returningToMini = false
     protected val isCollapsed: Boolean get() = slide <= 0.001f
     private var glassExpansion by androidx.compose.runtime.mutableFloatStateOf(0f)
     private var miniOffsetInSheet = 0
@@ -272,7 +273,7 @@ internal open class PhoneGlassSession(
             glass.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             glass.content {
                 HostConfiguration {
-                    NativeLiquidButton(bg, input, glassExpansion, panelBlur = navBlurDp.dp) { sx, sy, x, y ->
+                    NativeLiquidButton(bg, input, glassExpansion, panelBlur = navBlurDp.dp, autoClip = geometry.sideBySide) { sx, sy, x, y ->
                         miniContent?.let { v -> v.scaleX = sx; v.scaleY = sy; v.translationX = x; v.translationY = y }
                     }
                 }
@@ -597,11 +598,12 @@ internal open class PhoneGlassSession(
                         val sheetPosition = IntArray(2).also(sheet::getLocationInWindow)
                         miniOffsetInSheet = miniPosition[1] - sheetPosition[1]
                     }
-                    // Per-edge morph (tablet row): each side interpolates from its own
-                    // slot edge to zero, so the pill unfolds from its bottom-right
-                    // anchor into the full sheet while the sheet slides up.
-                    val left = (miniMarginPx[0] * (1f - materialProgress)).roundToInt()
-                    val right = (miniMarginPx[1] * (1f - materialProgress)).roundToInt()
+                    // Keep the tablet's original capsule anchor, but stop the
+                    // horizontal morph at 80% of the sheet width. This reduces
+                    // the fading surface area without changing its timing.
+                    val sideInset = if (geometry.sideBySide) sheet.width * 0.10f * materialProgress else 0f
+                    val left = (miniMarginPx[0] * (1f - materialProgress) + sideInset).roundToInt()
+                    val right = (miniMarginPx[1] * (1f - materialProgress) + sideInset).roundToInt()
                     val top = (miniOffsetInSheet * (1f - materialProgress)).roundToInt()
                     val collapsedHeight = dp(geometry.miniHeightDp)
                     val height = (collapsedHeight + (sheet.height - collapsedHeight) * progress).roundToInt().coerceAtLeast(collapsedHeight)
@@ -645,8 +647,11 @@ internal open class PhoneGlassSession(
                 backdropConsumerVisible(navGlass) || backdropConsumerVisible(navScrim) ||
                 backdropConsumerVisible(miniGlass))
         glassConsumersVisible = consumerVisible
-        val captureResumed = backdrop?.setCaptureEnabled(consumerVisible) == true
-        return revivedMiniGlass || captureResumed
+        // On the way back, capture the source while native player content still
+        // covers the screen. The mini glass stays GONE until the original 60% boundary.
+        val prewarmCapture = !consumerVisible && returningToMini && progress in 0.6f..0.85f
+        val captureResumed = backdrop?.setCaptureEnabled(consumerVisible || prewarmCapture) == true
+        return revivedMiniGlass || (consumerVisible && captureResumed)
     }
 
     private fun backdropConsumerVisible(view: View?): Boolean {
@@ -672,7 +677,12 @@ internal open class PhoneGlassSession(
         it.isAttachedToWindow && it.width > 0 && it.height > 0
     } == true
 
-    override fun onSlide(progress: Float) { slide = progress.coerceIn(0f, 1f) }
+    override fun onSlide(progress: Float) {
+        val next = progress.coerceIn(0f, 1f)
+        if (next < slide - 0.001f) returningToMini = true
+        else if (next > slide + 0.001f) returningToMini = false
+        slide = next
+    }
 
     override fun redirectedLayerAlpha(view: Any?, alpha: Float): Float? {
         if (closed || writingLayerAlpha) return null

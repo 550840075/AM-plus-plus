@@ -85,6 +85,8 @@ fun Modifier.drawBackdrop(
     shadow: (() -> Shadow?)? = DefaultShadow,
     innerShadow: (() -> InnerShadow?)? = null,
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
+    // Existing callers retain the offscreen clip; the large tablet mini surface can opt into Auto.
+    clipCompositingStrategy: androidx.compose.ui.graphics.CompositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen,
     exportedBackdrop: LayerBackdrop? = null,
     onDrawBehind: (DrawScope.() -> Unit)? = null,
     onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit = DefaultOnDrawBackdrop,
@@ -136,6 +138,7 @@ fun Modifier.drawBackdrop(
                 shapeProvider = shapeProvider,
                 effects = effects,
                 layerBlock = layerBlock,
+                clipCompositingStrategy = clipCompositingStrategy,
                 exportedBackdrop = exportedBackdrop,
                 onDrawBehind = onDrawBehind,
                 onDrawBackdrop = onDrawBackdrop,
@@ -150,6 +153,7 @@ private class DrawBackdropElement(
     val shapeProvider: ShapeProvider,
     val effects: BackdropEffectScope.() -> Unit,
     val layerBlock: (GraphicsLayerScope.() -> Unit)?,
+    val clipCompositingStrategy: androidx.compose.ui.graphics.CompositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen,
     val exportedBackdrop: LayerBackdrop?,
     val onDrawBehind: (DrawScope.() -> Unit)?,
     val onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit,
@@ -163,6 +167,7 @@ private class DrawBackdropElement(
             shapeProvider = shapeProvider,
             effects = effects,
             layerBlock = layerBlock,
+            clipCompositingStrategy = clipCompositingStrategy,
             exportedBackdrop = exportedBackdrop,
             onDrawBehind = onDrawBehind,
             onDrawBackdrop = onDrawBackdrop,
@@ -176,6 +181,7 @@ private class DrawBackdropElement(
         node.shapeProvider = shapeProvider
         node.effects = effects
         node.layerBlock = layerBlock
+        node.clipCompositingStrategy = clipCompositingStrategy
         if (node.exportedBackdrop != exportedBackdrop) {
             node.exportedBackdrop?.layerCoordinates = null
             node.exportedBackdrop = exportedBackdrop
@@ -193,6 +199,7 @@ private class DrawBackdropElement(
         properties["shapeProvider"] = shapeProvider
         properties["effects"] = effects
         properties["layerBlock"] = layerBlock
+        properties["clipCompositingStrategy"] = clipCompositingStrategy
         properties["exportedBackdrop"] = exportedBackdrop
         properties["onDrawBehind"] = onDrawBehind
         properties["onDrawBackdrop"] = onDrawBackdrop
@@ -208,6 +215,7 @@ private class DrawBackdropElement(
         if (shapeProvider != other.shapeProvider) return false
         if (effects != other.effects) return false
         if (layerBlock != other.layerBlock) return false
+        if (clipCompositingStrategy != other.clipCompositingStrategy) return false
         if (exportedBackdrop != other.exportedBackdrop) return false
         if (onDrawBehind != other.onDrawBehind) return false
         if (onDrawBackdrop != other.onDrawBackdrop) return false
@@ -222,6 +230,7 @@ private class DrawBackdropElement(
         result = 31 * result + shapeProvider.hashCode()
         result = 31 * result + effects.hashCode()
         result = 31 * result + (layerBlock?.hashCode() ?: 0)
+        result = 31 * result + clipCompositingStrategy.hashCode()
         result = 31 * result + (exportedBackdrop?.hashCode() ?: 0)
         result = 31 * result + (onDrawBehind?.hashCode() ?: 0)
         result = 31 * result + onDrawBackdrop.hashCode()
@@ -236,6 +245,7 @@ private class DrawBackdropNode(
     var shapeProvider: ShapeProvider,
     var effects: BackdropEffectScope.() -> Unit,
     var layerBlock: (GraphicsLayerScope.() -> Unit)?,
+    var clipCompositingStrategy: androidx.compose.ui.graphics.CompositingStrategy,
     var exportedBackdrop: LayerBackdrop?,
     var onDrawBehind: (DrawScope.() -> Unit)?,
     var onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit,
@@ -254,7 +264,7 @@ private class DrawBackdropNode(
     private val layoutLayerBlock: GraphicsLayerScope.() -> Unit = {
         clip = true
         shape = shapeProvider.shape
-        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        compositingStrategy = clipCompositingStrategy
     }
 
     private var layoutCoordinates: LayoutCoordinates? by mutableStateOf(null, neverEqualPolicy())
