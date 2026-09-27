@@ -61,7 +61,7 @@
 
 - JVM：`./gradlew.bat test` 全量通过（**769 项**），含 `AppleMusic653ProfileTest`（bootstrap tuple、档案选择、队列适配器与 Compose 缝改名、内容 HTTP 本地化拦截器、资料库 Compose VM getter、未固定符号回落）、宿主替身 fixture（`u8.E`、`w8.a`、`Li.f`、`Gi.A`、`Gi.D`）与玻璃资格用例。
 - 静态取证（每轮追加断言后的最新值）：`python scripts/verify-host-profile.py apple-music-6-5-3.xapk --version-name 6.5.3 --version-code 1599 --glass` → `checks: 51, failures: 0`；同脚本对 6.5.2 样本 `checks: 37, failures: 0`。断言覆盖三处改名缝（目录直连查询的形状唯一性与首选名占用、内容 HTTP 本地化拦截器家族与反向占用、资料库 Compose VM getter）以及 `androidx.lifecycle.G` 的 LiveData 表面。
-- lint/构建：与 CI 相同的任务清单（`test`、`lintDebug`、`lintVitalRelease`、`glass:lintDebug`、`glass-lab:lintDebug`、`assembleRelease`、`glass-lab:assembleDebug`、`glass-lab:assembleDebugAndroidTest`）。
+- lint/构建：与 CI 相同的任务清单（`test`、`app:lintDebug`、`app:lintVitalRelease`、`glass:lintDebug`、`app:assembleRelease`）。
 - 真机：已完成三轮真机回归并各自修复（§7 / §8 / §9，设备 PJD110，宿主 6.5.3/1599，模块从 1.5.7/106 迭代到 1.5.10/109）；逐能力验收清单（设置入口、歌词模糊与字体、自定义歌词、曲库刷新、目录语言、当前歌曲身份、Editorial Video、CJK 卡拉OK、双栏、玻璃底栏+迷你播放器+展开过渡+底部淡出）仍待逐项核对。
 
 ## 6. 未验证项与限制

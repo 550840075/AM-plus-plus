@@ -428,8 +428,8 @@ Select-String -Path $env:TEMP\ampp.log -Pattern "目录直连查询失败|原名
 
 ```powershell
 $env:AMPP_RELEASE_STORE_FILE = '<keystore 路径>'   # Release 签名需要的环境变量
-./gradlew.bat test :app:lintDebug :app:lintVitalRelease :glass:lintDebug :glass-lab:lintDebug `
-  :app:assembleRelease :glass-lab:assembleDebug :glass-lab:assembleDebugAndroidTest --no-daemon
+./gradlew.bat test :app:lintDebug :app:lintVitalRelease :glass:lintDebug `
+  :app:assembleRelease --no-daemon
 git diff --check
 ```
 

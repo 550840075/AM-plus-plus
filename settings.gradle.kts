@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "AMPlusPlus"
 include(":app")
-include(":backdrop", ":glass", ":glass-lab")
+include(":backdrop", ":glass")

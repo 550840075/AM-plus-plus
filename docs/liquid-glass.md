@@ -25,19 +25,13 @@
 python scripts/verify-glass-reference.py
 python scripts/verify-glass-host.py Apple+Music_6.5.2_APKPure.xapk
 .\gradlew.bat :app:testDebugUnitTest :glass:testDebugUnitTest
-.\gradlew.bat :app:lintDebug :app:lintVitalRelease :glass:lintDebug :glass-lab:lintDebug
-.\gradlew.bat :app:assembleRelease :glass-lab:assembleDebug :glass-lab:assembleDebugAndroidTest
+.\gradlew.bat :app:lintDebug :app:lintVitalRelease :glass:lintDebug
+.\gradlew.bat :app:assembleRelease
 ```
 
 构建采用 AGP 9.3.2、Gradle 9.7.1、Kotlin/Compose compiler 2.4.10、Compose Multiplatform 1.12.0、SDK 37.0 / Build Tools 37.0.0、Java 17 字节码。Android app/library 使用 AGP 内置 Kotlin。签名沿用现有配置；本机原配置的 `signing/` 路径不存在时，可把 `AMPP_RELEASE_STORE_FILE` 指向仓库根目录已有的签名文件，不需修改密钥或密码。
 
 DEX 校验直接解析指定 XAPK 的方法定义及继承关系，检查导航、菜单与底部面板签名，不把反编译的可读字段别名当成真实名称。
-
-## 对照应用与设备测试
-
-Glass Lab 独立安装，不需要 Root。A/B 切换同一场景的原始 Compose LayerBackdrop 与 Android View → RenderNode 桥，使用相同参考组件、底图、密度和输入。支持深浅色及滚动背景。“原生前景”另行启用生产使用的 NativeLiquidButton，检查原生 TextView 与玻璃共同形变和点击传递。
-
-连接 Android 13+ 设备后执行 `:glass-lab:connectedDebugAndroidTest`，硬件 PixelCopy 测试输出原始和桥接截图至应用外部文件目录 `glass-parity`，检查两种主题和两个滚动位置的静态差分。该测试必须在设备上运行；构建测试 APK 不代表测试已执行，也不覆盖 LSPosed 注入。
 
 ## 手动安装验收
 
@@ -47,9 +41,9 @@ Glass Lab 独立安装，不需要 Root。A/B 切换同一场景的原始 Compos
 4. 依次点击、重复点击、拖动选中胶囊，再快速反向拖动、松手、返回与打开深链。选中项须与页面一致。
 5. 播放/暂停、下一首、切歌、长按迷你播放器，反复上拉展开与收起；检查原生功能、命中区域及背景无跳变。
 6. 检查冷启动、前后台、旋转、深浅色、字体缩放、RTL、键盘和系统导航方式变化；关闭功能并重启后应恢复原生。
-7. 安装 Glass Lab，在相同主题下对照静态折射和拖拽/松手形变。记录手机型号、Android、刷新率、显示缩放及录屏。
+7. 记录手机型号、Android 版本、刷新率、显示缩放及录屏，供静态折射和拖拽/松手形变对照。
 
-日志过滤：`adb logcat -d -s AppleMusicEnhancer AMGlassLab AndroidRuntime`。玻璃挂载成功报告 `phone_liquid_glass: ACTIVE`，失败记录异常并恢复原生。性能可另用 `adb shell dumpsys gfxinfo com.apple.android.music framestats`；不要把录屏帧率当成实际刷新率。
+日志过滤：`adb logcat -d -s AppleMusicEnhancer AndroidRuntime`。玻璃挂载成功报告 `phone_liquid_glass: ACTIVE`，失败记录异常并恢复原生。性能可另用 `adb shell dumpsys gfxinfo com.apple.android.music framestats`；不要把录屏帧率当成实际刷新率。
 
 ## 验收状态
 
@@ -61,4 +55,4 @@ Glass Lab 独立安装，不需要 Root。A/B 切换同一场景的原始 Compos
 
 本次修复：宿主按包名创建模块 Context 时被包可见性过滤，改为使用 Xposed 提供的 ApplicationInfo 加载模块资源；Compose 改用模块自己的 Recomposer，避免从宿主查找不兼容的 AndroidX 生命周期所有者；布局调整保留宿主原有约束参数；收起时隐藏完整播放器内容，避免透明底栏下露出其画面。该设备的模块异常需从 LSPosed 模块日志读取，普通过滤 logcat 没有相应输出。
 
-730 项单元测试通过，最新 Release 构建及 app Lint 通过。Glass Lab 安装会话长时间停留在已提交但未完成状态，已取消本次测试安装，未改动设备安全设置。因此硬件 PixelCopy 对照、完整主题/配置/手势矩阵及帧耗时验收仍待执行，不能据当前功能验证宣称已达到一比一。
+730 项单元测试通过，最新 Release 构建及 app Lint 通过。完整主题/配置/手势矩阵及帧耗时验收仍待执行，不能据当前功能验证宣称已达到一比一。

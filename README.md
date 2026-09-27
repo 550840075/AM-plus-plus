@@ -178,7 +178,7 @@ chmod +x gradlew
 ./gradlew test :app:lintDebug :app:lintVitalRelease :app:assembleRelease
 ```
 
-CI 还会检查玻璃渲染器源码并构建 `glass` 与 `glass-lab`（PR 构建用 `assembleDebug` 代替 `assembleRelease`）。
+CI 还会检查玻璃渲染器源码，并对 `glass` 执行 Lint（PR 构建用 `assembleDebug` 代替 `assembleRelease`）。
 
 生成的 Release APK 位于：
 
@@ -196,7 +196,6 @@ app/src/main/resources/   libxposed 模块元数据
 app/src/test/             JVM 单元测试与结构回归测试
 glass/                    AndroidLiquidGlass 渲染器（固定提交纳入）
 backdrop/                 上游 Backdrop 库
-glass-lab/                玻璃对比参照应用，不随模块发布
 docs/images/              演示图
 docs/                     适配手册与逐版本适配记录
 scripts/                  可选的真机回归、录屏分析与 host profile 校验脚本
