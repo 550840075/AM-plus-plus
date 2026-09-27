@@ -44,7 +44,7 @@ internal object PhoneGlassRuntime {
         view.post {
             if (activity in failed || activity.isDestroyed) return@post
             try {
-                installHooks(activity.classLoader)
+                installHooks(activity.classLoader, build)
                 sessions[activity]?.takeUnless { it.ownsCurrentHierarchy() }?.let { it.close(); sessions.remove(activity) }
                 val desired = createSession(activity, config) { error -> fail(activity, config, error) }
                 if (desired == null) { sessions.remove(activity)?.close(); return@post }
@@ -81,7 +81,7 @@ internal object PhoneGlassRuntime {
             "玻璃接入失败，已恢复原生界面：${error.javaClass.simpleName}: ${error.message}", targetBuild(activity).displayName))
     }
 
-    private fun installHooks(loader: ClassLoader) {
+    private fun installHooks(loader: ClassLoader, build: TargetBuild) {
         if (hooksInstalled) return
         check(!hooksAttempted) { "Glass hook installation previously failed; restart the host to retry" }
         hooksAttempted = true
@@ -144,7 +144,10 @@ internal object PhoneGlassRuntime {
         // source alignment after that write, leaving its scale and the glass
         // transition untouched. The callback is optional on other host builds.
         runCatching {
-            val callback = loader.loadClass("com.apple.android.music.player.fragment.v0\$k")
+            val callbackName = checkNotNull(AppleMusicSymbols.playerArtworkSlideCallbackClassName(build)) {
+                "No artwork slide callback profile for ${build.displayName}"
+            }
+            val callback = loader.loadClass(callbackName)
             val artworkField = callback.getDeclaredField("a").apply { isAccessible = true }
             val slideMethod = callback.getDeclaredMethod("c", Float::class.javaPrimitiveType!!)
             ModernXposedRuntime.hookMethod(slideMethod, object : ModernMethodHook() {
@@ -156,7 +159,7 @@ internal object PhoneGlassRuntime {
                     }
                 }
             })
-        }
+        }.onFailure { ModernXposedRuntime.log("liquid glass artwork alignment hook unavailable for ${build.displayName}", it) }
         // Apple's scrolling behavior reserves bottom padding on the content host.
         // Redirect it before setPadding rather than fighting it with another layout every frame.
         ModernXposedRuntime.hookMethod(View::class.java.getDeclaredMethod("setPadding", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType), object : ModernMethodHook() {
