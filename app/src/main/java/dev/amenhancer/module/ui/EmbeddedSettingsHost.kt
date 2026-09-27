@@ -2174,23 +2174,28 @@ internal class EmbeddedSettingsHost private constructor(
                     EmbeddedSettingsPalette.primary,
                 ),
             ) { onSettingsChanged(settings.copy(dualPaneEnabled = it)) })
+            // The compensation toggle only matters for the native tablet bar:
+            // liquid glass owns the bottom geometry while it is on, so hide the
+            // row instead of showing a switch that silently does nothing.
+            if (!settings.phoneLiquidGlassEnabled) {
+                addView(embeddedDivider(activity))
+                addView(embeddedSettingRow(
+                    activity,
+                    "平板底栏补偿",
+                    "如果底栏显示异常开启该选项",
+                    settings.navigationCompensationEnabled,
+                    iconTint = EmbeddedSettingsPalette.primary,
+                    iconDrawable = EmbeddedGlyphDrawable(
+                        EmbeddedGlyphKind.BottomBar,
+                        EmbeddedSettingsPalette.primary,
+                    ),
+                ) { onSettingsChanged(settings.copy(navigationCompensationEnabled = it)) })
+            }
             addView(embeddedDivider(activity))
             addView(embeddedSettingRow(
                 activity,
-                "平板底栏补偿",
-                "如果底栏显示异常开启该选项",
-                settings.navigationCompensationEnabled,
-                iconTint = EmbeddedSettingsPalette.primary,
-                iconDrawable = EmbeddedGlyphDrawable(
-                    EmbeddedGlyphKind.BottomBar,
-                    EmbeddedSettingsPalette.primary,
-                ),
-            ) { onSettingsChanged(settings.copy(navigationCompensationEnabled = it)) })
-            addView(embeddedDivider(activity))
-            addView(embeddedSettingRow(
-                activity,
-                "手机液态玻璃底栏",
-                "为手机底栏和迷你播放器启用液态玻璃效果，需重开应用",
+                "液态玻璃底栏",
+                "为手机与开启平板双栏播放器的平板横屏的底栏和迷你播放器启用液态玻璃效果，需重开应用",
                 settings.phoneLiquidGlassEnabled,
                 iconTint = EmbeddedSettingsPalette.accent,
                 iconDrawable = EmbeddedGlyphDrawable(

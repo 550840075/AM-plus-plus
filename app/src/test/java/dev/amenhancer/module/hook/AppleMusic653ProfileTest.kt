@@ -23,6 +23,23 @@ class AppleMusic653ProfileTest {
     private val version653 = AppleMusicVersion("6.5.3", 1599L)
 
     @Test
+    fun `glass artwork slide callback follows the selected build profile`() {
+        assertEquals(
+            "com.apple.android.music.player.fragment.t0\$k",
+            AppleMusicSymbols.playerArtworkSlideCallbackClassName(
+                TargetBuild(ModuleConstants.TARGET_PACKAGE, "6.5.2", 1586L),
+            ),
+        )
+        assertEquals(
+            "com.apple.android.music.player.fragment.v0\$k",
+            AppleMusicSymbols.playerArtworkSlideCallbackClassName(build653),
+        )
+        assertNull(AppleMusicSymbols.playerArtworkSlideCallbackClassName(
+            TargetBuild(ModuleConstants.TARGET_PACKAGE, "6.5.3", 1586L),
+        ))
+    }
+
+    @Test
     fun `bootstrap accepts only the exact 6_5_3 tuple`() {
         val bootstrap = EmbeddedBootstrap()
         assertTrue(bootstrap.supports(build653))

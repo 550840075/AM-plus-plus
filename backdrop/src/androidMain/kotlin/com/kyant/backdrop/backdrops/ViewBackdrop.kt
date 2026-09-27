@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.unit.Density
 import com.kyant.backdrop.Backdrop
+import kotlin.math.abs
 
 /** AM++ Android View bridge. The source must NOT contain any consumer of this backdrop. */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -44,6 +45,7 @@ class ViewBackdrop(
     private var observer: ViewTreeObserver? = null
     private var recording = false
     private var closed = false
+    private var captureEnabled = true
     var ready: Boolean = false
         private set
     var recordings: Long = 0
@@ -57,13 +59,24 @@ class ViewBackdrop(
         observer = source.viewTreeObserver.also { it.addOnPreDrawListener(this) }
     }
 
+    /** Suspend source recording while no backdrop consumer is visible. */
+    fun setCaptureEnabled(enabled: Boolean): Boolean {
+        if (closed || captureEnabled == enabled) return false
+        captureEnabled = enabled
+        if (enabled) {
+            ready = false
+            source.postInvalidateOnAnimation()
+        }
+        return enabled // The caller can defer this draw until the fresh capture.
+    }
+
     override fun onPreDraw(): Boolean {
-        if (closed || recording || !source.isAttachedToWindow || source.width == 0 || source.height == 0) return true
+        if (closed || !captureEnabled || recording || !source.isAttachedToWindow || source.width == 0 || source.height == 0) return true
         try {
             check(source.isHardwareAccelerated) { "Hardware accelerated window required" }
             updateSourceMatrix()
             sourceToWindow.getValues(matrixValues)
-            val moved = !matrixValues.contentEquals(previousMatrix)
+            val moved = hasSignificantMatrixChange()
             if (!ready || source.isDirty || moved || node.width != source.width || node.height != source.height) {
                 recording = true
                 node.setPosition(0, 0, source.width, source.height)
@@ -85,6 +98,17 @@ class ViewBackdrop(
             return false // Do not expose a discarded background before the host restores its UI.
         }
         return true
+    }
+
+    // Compare with the last recorded matrix so subpixel movement accumulates
+    // until it crosses the threshold; content changes still trigger a capture.
+    private fun hasSignificantMatrixChange(): Boolean = matrixValues.indices.any { index ->
+        if (index == Matrix.MTRANS_X || index == Matrix.MTRANS_Y) {
+            val delta = abs(matrixValues[index] - previousMatrix[index])
+            !delta.isFinite() || delta >= 0.5f
+        } else {
+            matrixValues[index] != previousMatrix[index]
+        }
     }
 
     /** Transparent Compose scenes must include the window underneath them. Otherwise

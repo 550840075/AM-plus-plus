@@ -41,6 +41,9 @@ fun NativeLiquidButton(
     input: NativeButtonInput,
     expansion: Float = 0f,
     panelBlur: Dp = GlassPolicy.PANEL_BLUR_DP.dp,
+    /** Let Compose choose the compositing path for the tablet mini surface. */
+    autoClip: Boolean = false,
+    miniHeightDp: Int = GlassPolicy.MINI_HEIGHT_DP,
     transformContent: (Float, Float, Float, Float) -> Unit,
 ) {
     val containerColor = if (isSystemInDarkTheme()) Color(0xFF121212).copy(alpha = 0.4f)
@@ -60,7 +63,9 @@ fun NativeLiquidButton(
     Box(
         Modifier.fillMaxSize().drawBackdrop(
             backdrop = backdrop,
-            shape = { if (expansion == 0f) Capsule() else RoundedCornerShape(lerp(GlassPolicy.MINI_HEIGHT_DP / 2f, 24f, expansion).dp) },
+            clipCompositingStrategy = if (autoClip) androidx.compose.ui.graphics.CompositingStrategy.Auto
+                else androidx.compose.ui.graphics.CompositingStrategy.Offscreen,
+            shape = { if (expansion == 0f) Capsule() else RoundedCornerShape(lerp(miniHeightDp / 2f, 24f, expansion).dp) },
             effects = {
                 vibrancy()
                 blur(panelBlur.toPx())

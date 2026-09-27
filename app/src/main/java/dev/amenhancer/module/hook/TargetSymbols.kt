@@ -238,6 +238,7 @@ internal data class AppleMusicProfile(
 
 internal enum class TargetSymbolId {
     PLAYER_CONTROLLER,
+    PLAYER_ARTWORK_SLIDE_CALLBACK,
     PLAYER_ACTIVITY,
     PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER,
     PLAYER_ACTIVITY_ROOT,
@@ -364,6 +365,7 @@ private object AppleMusicProfiles {
         id = "apple-music-6.5.3-1599",
         exactClasses = mapOf(
             TargetSymbolId.PLAYER_CONTROLLER to "com.apple.android.music.player.fragment.v0",
+            TargetSymbolId.PLAYER_ARTWORK_SLIDE_CALLBACK to "com.apple.android.music.player.fragment.v0\$k",
             TargetSymbolId.PLAYER_ACTIVITY to "com.apple.android.music.common.activity.PlayerActivity",
             TargetSymbolId.EDITORIAL_VIDEO_OWNER to "com.apple.android.music.player.f1",
             TargetSymbolId.LYRICS_FRAGMENT to "com.apple.android.music.player.fragment.PlayerLyricsViewFragment",
@@ -409,6 +411,7 @@ private object AppleMusicProfiles {
         id = "apple-music-6.5.2-1586",
         exactClasses = mapOf(
             TargetSymbolId.PLAYER_CONTROLLER to "com.apple.android.music.player.fragment.t0",
+            TargetSymbolId.PLAYER_ARTWORK_SLIDE_CALLBACK to "com.apple.android.music.player.fragment.t0\$k",
             TargetSymbolId.PLAYER_ACTIVITY to "com.apple.android.music.common.activity.PlayerActivity",
             TargetSymbolId.EDITORIAL_VIDEO_OWNER to "com.apple.android.music.player.f1",
             TargetSymbolId.LYRICS_FRAGMENT to "com.apple.android.music.player.fragment.PlayerLyricsViewFragment",
@@ -464,6 +467,10 @@ private object AppleMusicProfiles {
 }
 
 internal object AppleMusicSymbols {
+    /** The verified BottomSheet callback that owns cover alignment on each glass-supported build. */
+    fun playerArtworkSlideCallbackClassName(build: TargetBuild): String? =
+        AppleMusicProfiles.match(build)?.exactClasses?.get(TargetSymbolId.PLAYER_ARTWORK_SLIDE_CALLBACK)
+
     /**
      * Apple Music 6.5.2/1586's karaoke transition entry point
      * (`com.apple.android.music.player.z.a0(z$a, int, int, int, boolean)`).
