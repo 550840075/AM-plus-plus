@@ -98,13 +98,6 @@ AM++ 通过 libxposed API 102 注入 Apple Music（`com.apple.android.music`）�
 | Xposed 框架 | 实现 libxposed API 102、remote preferences 和 remote file 的框架 |
 | Apple Music | `6.5.1 (1583)`、`6.5.2 (1586)`、`6.5.3 (1599)` |
 
-- 未列出的 Apple Music 版本 fail-closed：不装载 Hook，不会按旧符号猜测。
-- 兼容性由精确 profile 和结构契约定位，Apple Music 升级后需要重新适配，流程见 [Apple Music 新版本适配手册](docs/apple-music-target-adaptation.md)。
-- 6.5.3 (1599) 仍有两处降级，各自只影响一个子面：播放菜单／操作表的元数据改写、主页 Listen Now 封面连续性。
-- 功能开关不会热卸载已安装的 Hook，改动后必须强制停止并重新打开 Apple Music。
-- 自定义 TTML 上限 512 KiB。
-- 液态玻璃底栏作用于手机布局，以及开启“平板双栏播放器”的平板横屏；平板竖屏、关闭双栏的平板和其他版本继续使用原生底栏。平板形态的真机验收仍待进行。
-
 ## 安装
 
 ### Xposed 模块（推荐）
