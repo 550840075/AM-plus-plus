@@ -112,7 +112,7 @@ AM++ 通过 libxposed API 102 注入 Apple Music（`com.apple.android.music`）�
 
 ### npatch 嵌入版
 
-没有Lsposed的话可以选择npatch嵌入版，下载链接<a href="https://github.com/Zennmn/AM-plus-plus/releases/tag/embedded-2026.08.10-r1">，无法和官方版本共存。
+没有Lsposed的话可以选择npatch嵌入版，下载链接<a href="https://github.com/Zennmn/AM-plus-plus/releases/tag/embedded-2026.08.10-r1">npatch 嵌入版，无法和官方版本共存。
 
 ## 使用
 
