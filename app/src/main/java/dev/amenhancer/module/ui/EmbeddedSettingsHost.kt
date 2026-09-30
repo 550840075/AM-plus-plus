@@ -2178,7 +2178,7 @@ internal class EmbeddedSettingsHost private constructor(
             addView(embeddedSettingRow(
                 activity,
                 "强制显示蜂窝数据入口",
-                "恢复原生蜂窝数据设置 · 6.5.2/6.5.3 · 重开应用后显示",
+                "恢复原生蜂窝数据设置 · 重开应用后显示",
                 settings.forceCellularDataEntryEnabled,
                 iconTint = EmbeddedSettingsPalette.primary,
                 iconDrawable = EmbeddedGlyphDrawable(
