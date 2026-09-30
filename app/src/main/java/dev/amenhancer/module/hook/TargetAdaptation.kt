@@ -35,6 +35,9 @@ internal data class TargetAdaptation(
     val hleMetadata: HleMetadataTarget = HleMetadataTarget {
         TargetCapabilityInstall.Degraded("HLE metadata target was not configured")
     },
+    val cellularDataEntry: CellularDataEntryTarget = CellularDataEntryTarget {
+        TargetCapabilityInstall.Degraded("Cellular data entry target was not configured")
+    },
 ) {
     companion object {
         fun appleMusic(
@@ -65,6 +68,11 @@ internal data class TargetAdaptation(
                 currentSong = currentSong,
                 dualPane = AppleMusicDualPaneTarget(resolver, build),
                 editorialVideo = AppleMusicEditorialVideoTarget(application, resolver),
+                cellularDataEntry = AppleMusicCellularDataEntryTarget(
+                    symbols = resolver,
+                    build = build,
+                    enabled = { config.settings().forceCellularDataEntryEnabled },
+                ),
                 bidirectionalLyricBlur = AppleMusicBidirectionalLyricBlurTarget(resolver),
                 cjkKaraokeAnimation = AppleMusicCjkKaraokeAnimationTarget(resolver),
                 lyricsTypeface = AppleMusicLyricsTypefaceTarget(
@@ -140,6 +148,10 @@ internal fun interface HleMetadataTarget {
     fun install(): TargetCapabilityInstall
 }
 
+internal fun interface CellularDataEntryTarget {
+    fun install(): TargetCapabilityInstall
+}
+
 internal class AppleMusicEditorialVideoTarget(
     private val application: Application,
     private val symbols: TargetSymbolResolver,
@@ -176,9 +188,16 @@ internal sealed interface TargetCapabilityInstall {
             require(message.isNotBlank()) { "Target capability diagnostic must not be blank" }
         }
     }
+
+    data class Unsupported(override val message: String) : TargetCapabilityInstall {
+        init {
+            require(message.isNotBlank()) { "Target capability diagnostic must not be blank" }
+        }
+    }
 }
 
 internal fun TargetCapabilityInstall.toFeatureInstallResult(): FeatureInstallResult = when (this) {
     is TargetCapabilityInstall.Active -> FeatureInstallResult.active(message)
     is TargetCapabilityInstall.Degraded -> FeatureInstallResult.degraded(message)
+    is TargetCapabilityInstall.Unsupported -> FeatureInstallResult.unsupported(message)
 }

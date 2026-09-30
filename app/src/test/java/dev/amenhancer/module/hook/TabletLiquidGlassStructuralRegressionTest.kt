@@ -8,8 +8,8 @@ import org.junit.Test
 /**
  * Guards the tablet dual-pane + liquid-glass combination contract: the tablet session is
  * gated behind the dual-pane form and the shared toggle, the dual-pane boundary sync stays
- * muted while glass owns the collapsed geometry, and the configuration schema is untouched
- * (no new keys, no migration).
+ * muted while glass owns the collapsed geometry, and the tablet form continues to reuse
+ * the existing glass keys under the current configuration schema.
  */
 class TabletLiquidGlassStructuralRegressionTest {
     private fun source(relativePath: String): String = sequenceOf(
@@ -122,7 +122,7 @@ class TabletLiquidGlassStructuralRegressionTest {
     }
 
     @Test
-    fun `keeps the glass configuration keys and schema version unchanged`() {
+    fun `keeps the glass configuration keys under schema 15`() {
         val schema = source("dev/amenhancer/module/config/ModuleSettingsSchema.kt")
         val constants = source("dev/amenhancer/module/ModuleConstants.kt")
 
@@ -138,6 +138,7 @@ class TabletLiquidGlassStructuralRegressionTest {
             ),
             glassKeys,
         )
-        assertTrue(constants.contains("const val CONFIG_SCHEMA_VERSION = 14"))
+        // Schema 15 adds the independent cellular setting; glass still reuses its original keys.
+        assertTrue(constants.contains("const val CONFIG_SCHEMA_VERSION = 15"))
     }
 }

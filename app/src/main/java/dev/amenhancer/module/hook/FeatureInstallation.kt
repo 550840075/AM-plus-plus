@@ -266,6 +266,7 @@ private fun productionFeatureInstallationModule(
                 registerResources = { DualPaneResourceHook.install() },
             ),
             FeatureInstallationPlan(feature = EditorialVideoFeature()),
+            FeatureInstallationPlan(feature = CellularDataEntryFeature()),
             FeatureInstallationPlan(
                 feature = PhoneLiquidGlassFeature(),
                 registerResources = PhoneLiquidGlassResourceHook::install,

@@ -2174,6 +2174,22 @@ internal class EmbeddedSettingsHost private constructor(
                     EmbeddedSettingsPalette.primary,
                 ),
             ) { onSettingsChanged(settings.copy(dualPaneEnabled = it)) })
+            addView(embeddedDivider(activity))
+            addView(embeddedSettingRow(
+                activity,
+                "强制显示蜂窝数据入口",
+                "恢复原生蜂窝数据设置 · 6.5.2/6.5.3 · 重开应用后显示",
+                settings.forceCellularDataEntryEnabled,
+                iconTint = EmbeddedSettingsPalette.primary,
+                iconDrawable = EmbeddedGlyphDrawable(
+                    EmbeddedGlyphKind.Document,
+                    EmbeddedSettingsPalette.primary,
+                ),
+            ) {
+                // Other rows may have saved changes since this page was rendered.
+                onSettingsChanged(controller.currentSettings().copy(forceCellularDataEntryEnabled = it))
+                pageRefresh?.invoke()
+            })
             // The compensation toggle only matters for the native tablet bar:
             // liquid glass owns the bottom geometry while it is on, so hide the
             // row instead of showing a switch that silently does nothing.

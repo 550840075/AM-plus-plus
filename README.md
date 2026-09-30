@@ -50,6 +50,7 @@ AM++ 通过 libxposed API 102 注入 Apple Music（`com.apple.android.music`）�
 | 功能 | 默认 | 说明 |
 | --- | --- | --- |
 | 平板双栏播放器 | 开启 | 平板横屏时左侧播放器、右侧实时歌词，并同时抑制 Editorial Video。 |
+| 强制显示蜂窝数据入口 | 关闭 | Apple Music 6.5.2/1586、6.5.3/1599 上保留原生数据分组，并恢复蜂窝使用偏好的可用性判断。独立于双栏和歌曲名修正；重开 Apple Music 后显示。 |
 | 双向歌词模糊 | 开启 | 当前高亮行清晰，前后歌词按距离逐渐模糊；手动滚动时暂停，停止约 1 秒后恢复。需要 Android 12 及以上。 |
 | CJK 长尾歌词动画 | 开启 | 让 CJK 歌词复用 Apple Music 原生的 rush-gradient 动画。需重开 Apple Music。 |
 | 歌词模糊半径偏移 | `0px` | 在基础半径上增减 `-10..10px`。 |

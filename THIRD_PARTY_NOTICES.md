@@ -38,6 +38,19 @@ Source provenance and AM++ changes: `backdrop/UPSTREAM.md`.
 
 Compose Multiplatform 1.12.0 and io.github.kyant0:shapes:1.2.1 are Apache-2.0 dependencies.
 
+## HyperLyrics-Enhanced cellular data settings
+
+The cellular data settings scope and hook behavior in
+`app/src/main/java/dev/amenhancer/module/hook/AppleMusicCellularDataEntryTarget.kt`
+are adapted from HyperLyrics-Enhanced's `AppleCellularDataSettingsHooks.kt`,
+source snapshot `38cf511`.
+
+Copyright 2026 juren233. Licensed under the Apache License, Version 2.0.
+AM++ adds its own configuration, exact target profiles, capability installation,
+and a gate that keeps partially registered hooks dormant.
+
+License: https://www.apache.org/licenses/LICENSE-2.0
+
 ## libxposed API and service
 
 This project uses `io.github.libxposed:api:102.0.0` and
