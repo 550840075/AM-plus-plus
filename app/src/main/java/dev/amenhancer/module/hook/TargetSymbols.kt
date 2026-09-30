@@ -266,6 +266,12 @@ internal enum class TargetSymbolId {
     CJK_KARAOKE_ANIMATION_METHOD,
     CJK_UNICODE_BLOCK_HELPER_OWNER,
     CJK_UNICODE_BLOCK_HELPER_METHOD,
+    SETTINGS_FRAGMENT,
+    SETTINGS_DATA_CATEGORY_BUILD_METHOD,
+    SETTINGS_CELLULAR_SIM_CHECK_OWNER,
+    SETTINGS_CELLULAR_SIM_CHECK_METHOD,
+    CELLULAR_AVAILABILITY_OWNER,
+    CELLULAR_AVAILABILITY_METHOD,
 }
 
 private object AppleMusicProfiles {
@@ -393,6 +399,10 @@ private object AppleMusicProfiles {
             TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_OWNER to "K5.a",
             TargetSymbolId.CJK_KARAOKE_ANIMATION_OWNER to "com.apple.android.music.player.A",
             TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_OWNER to "com.apple.android.music.utils.E0\$a",
+            TargetSymbolId.SETTINGS_FRAGMENT to "com.apple.android.music.settings.fragment.SettingsFragment",
+            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_OWNER to "Oa.c",
+            TargetSymbolId.CELLULAR_AVAILABILITY_OWNER to
+                "com.apple.android.music.playback.connectivity.FuseConnectivityChecker",
         ),
         exactMethods = mapOf(
             TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "k1",
@@ -401,6 +411,9 @@ private object AppleMusicProfiles {
             TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_METHOD to "b",
             TargetSymbolId.CJK_KARAOKE_ANIMATION_METHOD to "a0",
             TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_METHOD to "a",
+            TargetSymbolId.SETTINGS_DATA_CATEGORY_BUILD_METHOD to "t1",
+            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_METHOD to "e",
+            TargetSymbolId.CELLULAR_AVAILABILITY_METHOD to "isCellularAvailable",
         ),
         exactFields = mapOf(
             TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
@@ -440,6 +453,10 @@ private object AppleMusicProfiles {
             TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_OWNER to "J5.a",
             TargetSymbolId.CJK_KARAOKE_ANIMATION_OWNER to "com.apple.android.music.player.z",
             TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_OWNER to "com.apple.android.music.utils.I0\$a",
+            TargetSymbolId.SETTINGS_FRAGMENT to "com.apple.android.music.settings.fragment.SettingsFragment",
+            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_OWNER to "La.c",
+            TargetSymbolId.CELLULAR_AVAILABILITY_OWNER to
+                "com.apple.android.music.playback.connectivity.FuseConnectivityChecker",
         ),
         exactMethods = mapOf(
             TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "k1",
@@ -448,6 +465,9 @@ private object AppleMusicProfiles {
             TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_METHOD to "b",
             TargetSymbolId.CJK_KARAOKE_ANIMATION_METHOD to "a0",
             TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_METHOD to "a",
+            TargetSymbolId.SETTINGS_DATA_CATEGORY_BUILD_METHOD to "t1",
+            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_METHOD to "e",
+            TargetSymbolId.CELLULAR_AVAILABILITY_METHOD to "isCellularAvailable",
         ),
         exactFields = mapOf(
             TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
@@ -467,6 +487,42 @@ private object AppleMusicProfiles {
 }
 
 internal object AppleMusicSymbols {
+    /** Verified original DEX gates; do not guess from boolean/void method shapes on another build. */
+    val SettingsDataCategoryBuild = methodSymbol(
+        id = "settings-data-category-build",
+        profileOwner = TargetSymbolId.SETTINGS_FRAGMENT,
+        exactMethodId = TargetSymbolId.SETTINGS_DATA_CATEGORY_BUILD_METHOD,
+        fallbackOwner = { false },
+        contract = { method ->
+            isCellularHookMethod(method, static = false) &&
+                method.parameterTypes.isEmpty() && method.returnType == Void.TYPE
+        },
+    )
+
+    val SettingsCellularSimCheck = methodSymbol(
+        id = "settings-cellular-sim-check",
+        profileOwner = TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_OWNER,
+        exactMethodId = TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_METHOD,
+        fallbackOwner = { false },
+        contract = { method ->
+            isCellularHookMethod(method, static = true) &&
+                method.parameterTypes.map { it.name } == listOf("android.content.Context") &&
+                method.returnType == Boolean::class.javaPrimitiveType
+        },
+    )
+
+    val CellularAvailability = methodSymbol(
+        id = "cellular-availability",
+        profileOwner = TargetSymbolId.CELLULAR_AVAILABILITY_OWNER,
+        exactMethodId = TargetSymbolId.CELLULAR_AVAILABILITY_METHOD,
+        fallbackOwner = { false },
+        contract = { method ->
+            isCellularHookMethod(method, static = false) &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == Boolean::class.javaPrimitiveType
+        },
+    )
+
     /** The verified BottomSheet callback that owns cover alignment on each glass-supported build. */
     fun playerArtworkSlideCallbackClassName(build: TargetBuild): String? =
         AppleMusicProfiles.match(build)?.exactClasses?.get(TargetSymbolId.PLAYER_ARTWORK_SLIDE_CALLBACK)
@@ -1844,6 +1900,10 @@ internal object AppleMusicSymbols {
         "com.apple.android.music.mediaapi.models.internals.Title"
 
 }
+
+private fun isCellularHookMethod(method: Method, static: Boolean): Boolean =
+    Modifier.isPublic(method.modifiers) && Modifier.isStatic(method.modifiers) == static &&
+        !Modifier.isAbstract(method.modifiers) && !method.isSynthetic && !method.isBridge
 
 private fun isCjkKaraokeAnimationMethod(method: Method): Boolean =
     !Modifier.isStatic(method.modifiers) &&

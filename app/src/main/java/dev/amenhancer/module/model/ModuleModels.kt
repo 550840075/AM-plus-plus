@@ -17,6 +17,8 @@ data class ModuleSettings(
     /** Enables the native rush-gradient adaptation for CJK karaoke lyrics. */
     val cjkKaraokeAnimationEnabled: Boolean = true,
     val navigationCompensationEnabled: Boolean = false,
+    /** Restores native Data settings and the app's cellular availability predicate. */
+    val forceCellularDataEntryEnabled: Boolean = false,
     val lyricBlurRadiusOffsetPx: Int = 0,
     /** Fixed logical density for Apple Music; 0 follows the system density. */
     val appleMusicDpiOverrideDpi: Int = FOLLOW_SYSTEM_APPLE_MUSIC_DPI,

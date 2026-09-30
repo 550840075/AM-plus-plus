@@ -1890,10 +1890,11 @@ internal class EmbeddedSettingsHost private constructor(
         val currentDialog = dialogReference?.get()
         if (currentDialog?.isShowing == true) return
 
-        var draft = runCatching { controller.currentSettings() }.getOrElse {
+        val initialSettings = runCatching { controller.currentSettings() }.getOrElse {
             Toast.makeText(activity, "无法读取 AM++ 设置", Toast.LENGTH_SHORT).show()
             return
         }
+        val draft = EmbeddedSettingsDraft(initialSettings, controller::saveOrdinarySettings)
         var page = EmbeddedSettingsPage.MAIN
         var dialogReady = false
         lateinit var dialog: AlertDialog
@@ -2020,7 +2021,7 @@ internal class EmbeddedSettingsHost private constructor(
         }
 
         fun saveDraft(close: Boolean) {
-            if (controller.saveOrdinarySettings(draft)) {
+            if (draft.save()) {
                 Toast.makeText(activity, "已保存；需要重启的设置请重开 Apple Music。", Toast.LENGTH_LONG).show()
                 if (close) dialog.dismiss()
             } else {
@@ -2029,8 +2030,7 @@ internal class EmbeddedSettingsHost private constructor(
         }
 
         fun updateDraft(next: ModuleSettings) {
-            draft = next
-            if (!controller.saveOrdinarySettings(next)) {
+            if (!draft.update(next)) {
                 Toast.makeText(activity, "保存 AM++ 设置失败", Toast.LENGTH_SHORT).show()
             }
         }
@@ -2082,7 +2082,7 @@ internal class EmbeddedSettingsHost private constructor(
                 renderEmbeddedCustomLyricsPage(
                     activity = activity,
                     parent = content,
-                    settings = draft,
+                    settings = draft.settings,
                     song = controller.currentSongDetails(),
                     onSettingsChanged = ::updateDraft,
                 )
@@ -2090,9 +2090,14 @@ internal class EmbeddedSettingsHost private constructor(
                 renderEmbeddedMainPage(
                     activity = activity,
                     parent = content,
-                    settings = draft,
+                    settings = draft.settings,
                     lyricsCount = runCatching { controller.lyricsEntries().size }.getOrDefault(0),
                     onSettingsChanged = ::updateDraft,
+                    onCellularDataEntryChanged = { enabled ->
+                        if (!draft.updateCellularDataEntry(enabled)) {
+                            Toast.makeText(activity, "保存 AM++ 设置失败", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     onOpenCustomLyrics = {
                         page = EmbeddedSettingsPage.CUSTOM_LYRICS
                         renderPage()
@@ -2158,6 +2163,7 @@ internal class EmbeddedSettingsHost private constructor(
         settings: ModuleSettings,
         lyricsCount: Int,
         onSettingsChanged: (ModuleSettings) -> Unit,
+        onCellularDataEntryChanged: (Boolean) -> Unit,
         onOpenCustomLyrics: () -> Unit,
         onChooseFont: () -> Unit,
         onClearFont: () -> Unit,
@@ -2174,6 +2180,21 @@ internal class EmbeddedSettingsHost private constructor(
                     EmbeddedSettingsPalette.primary,
                 ),
             ) { onSettingsChanged(settings.copy(dualPaneEnabled = it)) })
+            addView(embeddedDivider(activity))
+            addView(embeddedSettingRow(
+                activity,
+                "强制显示蜂窝数据入口",
+                "恢复原生蜂窝数据设置 · 重开应用后显示",
+                settings.forceCellularDataEntryEnabled,
+                iconTint = EmbeddedSettingsPalette.primary,
+                iconDrawable = EmbeddedGlyphDrawable(
+                    EmbeddedGlyphKind.Document,
+                    EmbeddedSettingsPalette.primary,
+                ),
+            ) {
+                onCellularDataEntryChanged(it)
+                pageRefresh?.invoke()
+            })
             // The compensation toggle only matters for the native tablet bar:
             // liquid glass owns the bottom geometry while it is on, so hide the
             // row instead of showing a switch that silently does nothing.
