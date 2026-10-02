@@ -50,4 +50,8 @@ androidx.recyclerview.widget.RecyclerView
 
 本次提交是有日志和 DEX 支持的针对性修补。由于 v6 在修补前已不再复现，尚不能证明它消除了用户最初的稳定触发；需要用 v7 在原来的后台返回场景继续验收。尤其是未测量宽度为零且没有可用行几何的情况，此修补保留原生行为，需要新的异常现场才能进一步定位。
 
-候选安装包：`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-tablet-resume-v7.apk`。最终哈希和签名校验结果在打包完成后补充。
+候选安装包：`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-tablet-resume-v7.apk`。由源码提交 `0822451` 打包，版本 1.6.2/112，9,734,152 字节；本轮仅分析代码并生成候选包，没有安装到设备。
+
+SHA-256：`dddeb723130e292097eb52e15d10ea0240793743efc4d6c18de48b57e3946546`。
+
+APK v2 签名验证通过，沿用 RSA 4096 发布证书，证书 SHA-256：`6ed7800187c3513562334319723498fd01772396b9848d4aeba50622910be0d4`。6 个打包的 profile/index JSON 与源码逐字节一致，Xposed 入口存在。v4/v5/v6 安装包保留。
