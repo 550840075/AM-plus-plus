@@ -14,7 +14,12 @@ import json
 import struct
 import sys
 import zipfile
+import importlib.util
 from pathlib import Path
+
+_manifest_spec = importlib.util.spec_from_file_location('android_manifest',Path(__file__).with_name('android-package-manifest.py'))
+_manifest_module = importlib.util.module_from_spec(_manifest_spec)
+_manifest_spec.loader.exec_module(_manifest_module)
 
 
 def _uleb(data, offset):
@@ -144,8 +149,16 @@ def main():
             apk = zipfile.ZipFile(args.package)
         else:
             apk = zipfile.ZipFile(io.BytesIO(package.read(base_name)))
-        version_name = args.version_name or (manifest or {}).get("version_name")
-        version_code = args.version_code or str((manifest or {}).get("version_code", ""))
+        package_name, actual_name, actual_code = _manifest_module.manifest_identity(apk.read('AndroidManifest.xml'))
+        if package_name != 'com.apple.android.music':
+            raise SystemExit('Unexpected manifest package: '+package_name)
+        version_name = args.version_name or actual_name
+        version_code = args.version_code or str(actual_code)
+        if (version_name,str(version_code)) != (actual_name,str(actual_code)):
+            raise SystemExit(f'Claimed tuple {version_name}/{version_code} differs from binary manifest {actual_name}/{actual_code}')
+        if manifest and ((manifest.get('version_name') and manifest['version_name'] != actual_name) or
+                         (manifest.get('version_code') and str(manifest['version_code']) != str(actual_code))):
+            raise SystemExit('Split package manifest disagrees with base Android manifest')
         profile = PROFILES.get((version_name or "", str(version_code)))
         if profile is None:
             raise SystemExit(

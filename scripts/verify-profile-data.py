@@ -32,6 +32,11 @@ def main():
                 if target['parameterTypeNames'] is not None and target['parameterCount'] is not None:
                     assert len(target['parameterTypeNames']) == target['parameterCount']
         baseline_path = ROOT/'host-applemusic/src/test/resources/baseline'/filename
+        assert profile['chrome']['resources'] and profile['settings']['fragmentClass']
+        assert len(profile['legacyFirstMatchExceptions']) == len(set(profile['legacyFirstMatchExceptions']))
+        if not baseline_path.is_file():
+            assert profile.get('ambiguityPolicy', 'reject-ambiguous') == 'reject-ambiguous'
+            assert not profile.get('legacyFirstMatchExceptions'), 'new profiles cannot inherit first-match exceptions'
         if baseline_path.is_file():
             baseline = json.loads(baseline_path.read_text(encoding='utf-8'))
             assert profile['indexed'] == baseline['indexed'], f'indexed baseline drift: {filename}'

@@ -39,6 +39,11 @@
 
 </details>
 
+## 版本适配重构
+
+架构和后续适配入口见 [适配手册](docs/host-adaptation-guide.md)，本次验证范围见 [验证记录](docs/refactor-validation.md)。7.x 目前仅准备接入结构；生产支持仍由精确版本 profile 判断。
+
+
 ## 项目简介
 
 AM++ 通过 libxposed API 102 注入 Apple Music（`com.apple.android.music`）。它不替换播放器，只在保留原有播放流程的前提下补充增强能力。
