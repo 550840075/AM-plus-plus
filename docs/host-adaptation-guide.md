@@ -22,7 +22,7 @@
 3. 新 profile 默认 `ambiguityPolicy=reject-ambiguous`，不得复制旧 `legacyFirstMatchExceptions`。契约和回退实现留在 Kotlin，数据不能执行代码。
 4. `productionEnabled` 保持 false，先给新 tuple 增加解析、错误签名、歧义、继承、缓存重校验和类加载器测试。
 5. 运行 `python scripts/verify-profile-data.py`、`python scripts/verify-architecture.py` 和 `python scripts/verify-host-profile.py PACKAGE --version-name NAME --version-code CODE --glass`。静态脚本直接核对二进制 Manifest，参数不能伪造宿主版本。APKS/XAPK 收集所有 split DEX 和布局。
-6. 执行全模块测试、Lint、构建，再按功能保全矩阵进行旧版本回归和新版本真机验收。只有正式安装包和验收都成立后才启用生产资格。
+6. 执行全模块测试、Lint、构建，再按功能保全矩阵进行旧版本回归和新版本真机验收。用户明确要求适配精确 beta 时，可以在开发分支为用户测试启用该 tuple；运行时验收状态必须独立记录，不能将静态通过写为真机通过。其他版本仍需独立取证。
 
 旧 HLE 引擎的“版本名或版本号匹配”和已审核候选回退暂时保留，外层生产门禁始终精确匹配 tuple。不要直接收紧旧引擎后把未验证的旧功能失效当作正常重构。
 
@@ -32,13 +32,13 @@
 
 `HostViewSessionController` 关闭旧会话后才发布新会话；旧 owner 的延迟 destroy 不能关闭新 owner。`OwnedHostProperty` 只恢复模块仍拥有的最后写入；原生暂停封面 scale、后续 alpha/translation 写入保留。旧 SONG/QUEUE 语义维持，不以新导航替换播放器状态。
 
-beta 1606 的资料只在 `src/test/resources/research/`，不会进入 APK 的生产注册表。研究发现 MainActivity/MusicContentFragment、顶部 Compose 导航、独立 mini 和 settings2 页面变化；正式版必须重新取证。此前实验 APK 不整体合并。
+7.0.0-beta/1606 已新增精确生产 profile，为用户测试启用；历史 research 夹具继续留在测试目录。工厂按 `fragment-content` 分派 settings2、双栏与 Fragment 玻璃。新平板使用顶部导航和独立底部 mini 的原生边界，抽屉保留原生交互；玻璃不依赖双栏开关。新布局和渐变字段只从当前 tuple 读取。具体证据、测试范围和待验收项见 [1606 适配记录](applemusic-700-adaptation.md)。正式版和其他 beta 必须重新取证。此前实验 APK 没有整体合并。
 
 ## 热路径与安装
 
 冷启动顺序维持：精确版本 → 配置迁移/绑定 → DPI → 资源回调 → Application 后功能 → 设置入口。资源基础设施失败停止后续安装；目标缺失只降级对应能力。
 
-Hook 注册先处于 preparing，必要目标全部成功后 activate；失败 close 后已注册回调变为原生透传。不依赖框架提供可靠 unhook。原生歌词缓存持有不透明句柄，JavaCPP 地址/liveness 与 Adam ID 校验留在宿主适配器，进入 I2 前才解包。
+Hook 注册先处于 preparing，必要目标全部成功后 activate；失败 close 后已注册回调变为原生透传。不依赖框架提供可靠 unhook。原生歌词缓存持有不透明句柄，JavaCPP 地址/liveness 与 Adam ID 校验留在宿主适配器，进入 I2（旧版）或 w2（1606）前才解包。
 
 Chrome ID、字段、方法在绑定时缓存；布局变化显式失效视图缓存。slide/alpha 回调不扫描 DEX 或发现反射成员。文件、网络、TTML parse 继续在后台。字体 Hook 已安装和字体实际加载分别报告。
 
