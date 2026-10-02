@@ -45,6 +45,23 @@ internal object AlphaGradientEdgeFieldProfiles {
         type.declaredFields.associate { field -> field.name to field.type },
     )
 
+    fun resolve(type: Class<*>, build: TargetBuild): AlphaGradientEdgeFieldProfile? =
+        resolve(type.declaredFields.associate { it.name to it.type }, build)
+
+    internal fun resolve(fields: Map<String, Class<*>>, build: TargetBuild): AlphaGradientEdgeFieldProfile? {
+        val profile = dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(
+            build.packageName, build.versionName, build.versionCode)
+        if (profile?.family != "fragment-content") return resolve(fields)
+        val variants = profile.document.getJSONObject("layoutVariants").getJSONArray("gradientEdges")
+        return List(variants.length()) { index -> variants.getJSONObject(index).let {
+            AlphaGradientEdgeFieldProfile(it.getJSONArray("vertical").profileStrings(),
+                it.getJSONArray("horizontal").profileStrings(), it.getJSONArray("requiredIntegers").profileStrings())
+        } }.singleOrNull { candidate ->
+            (candidate.vertical + candidate.horizontal).all { fields[it] == Boolean::class.javaPrimitiveType } &&
+                candidate.requiredIntegers.all { fields[it] == Int::class.javaPrimitiveType }
+        }
+    }
+
     internal fun resolve(fields: Map<String, Class<*>>): AlphaGradientEdgeFieldProfile? =
         profiles.singleOrNull { profile ->
             (profile.vertical + profile.horizontal).all { fieldName ->
@@ -75,7 +92,20 @@ internal object LyricsLayoutFieldProfiles {
         }.distinct()
     }
 
-    fun resolve(fragmentType: Class<*>): LyricsLayoutFieldProfile? = profiles.singleOrNull { profile ->
+    fun resolve(fragmentType: Class<*>): LyricsLayoutFieldProfile? = resolve(fragmentType, profiles)
+
+    fun resolve(fragmentType: Class<*>, build: TargetBuild): LyricsLayoutFieldProfile? {
+        val profile = dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(
+            build.packageName, build.versionName, build.versionCode)
+        if (profile?.family != "fragment-content") return resolve(fragmentType)
+        val variants = profile.document.getJSONObject("layoutVariants").getJSONArray("lyricsFields")
+        return resolve(fragmentType, List(variants.length()) { index -> variants.getJSONObject(index).let {
+            LyricsLayoutFieldProfile(it.getString("binding"), it.getString("container"), it.getString("recycler"),
+                it.getString("gradients"), it.getJSONArray("synchronizedMetrics").profileStrings())
+        } })
+    }
+
+    private fun resolve(fragmentType: Class<*>, candidates: List<LyricsLayoutFieldProfile>): LyricsLayoutFieldProfile? = candidates.singleOrNull { profile ->
         val bindingType = dualPaneField(fragmentType, profile.binding)?.type
             ?: return@singleOrNull false
         val bindingContractPresent = listOf(

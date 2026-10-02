@@ -532,29 +532,18 @@ internal fun AppleInternalCatalogResolver.coroutineResultFailure(result: Any?): 
 internal fun AppleInternalCatalogResolver.createCatalogAccess(): CatalogAccess {
         val resolvedHolder = resolvedCatalogHolder
         val holderClass = resolvedHolder.clazz
-        val companionField = holderClass.declaredFields.firstOrNull { field ->
-            Modifier.isStatic(field.modifiers) &&
-                field.type.name == "${holderClass.name}\$Companion"
-        } ?: error("MediaApiRepositoryHolder companion unavailable")
-        companionField.isAccessible = true
-        val companion = requireNotNull(companionField.get(null))
-        val mediaApi = AppleReflection.call(
-            companion,
+        val mediaApi = NativeCatalogAccessContract.mediaApi(
+            holderClass,
             resolvedHolder.target.runtimeMemberName(
                 AppleMusicRuntimeMember.MEDIA_API_HOLDER_GET_MEDIA_API_METHOD
             ),
         )
-            ?: error("Apple MediaApi without HTTP cache unavailable")
-        val storefrontField = findField(
+        val storefrontField = NativeCatalogAccessContract.storefrontField(
             mediaApi,
             resolvedHolder.target.runtimeMemberName(
                 AppleMusicRuntimeMember.MEDIA_API_STOREFRONT_FIELD
             ),
-        ).also { field ->
-            if (field.type != String::class.java) {
-                error("Apple MediaApi storefront field has unexpected type")
-            }
-        }
+        )
         val directQueryMethod = findDirectCatalogQueryMethod(
             clazz = mediaApi.javaClass,
             methodName = resolvedHolder.target.runtimeMemberName(

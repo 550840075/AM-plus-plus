@@ -10,8 +10,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 internal object DualPaneResourceHook {
+    private val rightLyricsCallback = RightLyricsPaneLayout::apply
+    private val typographyCallback = TabletLyricTypography::applyToInflatedLayout
     fun install() {
         LayoutInflationRegistry.register("bottom_navigation") { view ->
+            if (!FragmentDualPaneResources.isLegacyRoot(view)) return@register
             // XmlPullParser inflation can report the outer activity layout when
             // its tree merely contains bottom_navigation. Recover the included
             // navigation root so this keeps the exact-root semantics of the old
@@ -24,6 +27,7 @@ internal object DualPaneResourceHook {
             ConstraintLayoutPane.installLandscapeBottomNavigation(root, targetBuild(root.context))
         }
         LayoutInflationRegistry.register("fragment_player_main") { view ->
+            if (!FragmentDualPaneResources.isLegacyRoot(view)) return@register
             val root = view as? ViewGroup ?: return@register
             dualPaneDebug("layout callback root=" + root.javaClass.name + " orientation=" + root.resources.configuration.orientation)
             DualPaneShell.installImmediately(root)
@@ -39,13 +43,17 @@ internal object DualPaneResourceHook {
     }
 
     private fun hookTabletLandscapeLyricsSheet() {
-        LayoutInflationRegistry.register("fragment_player_lyrics_sheet", RightLyricsPaneLayout::apply)
+        LayoutInflationRegistry.register("fragment_player_lyrics_sheet") { view ->
+            if (FragmentDualPaneResources.isLegacyRoot(view)) rightLyricsCallback(view)
+        }
     }
 
     private fun hookTabletLyricTextLayout(
         layoutName: String,
     ) {
-        LayoutInflationRegistry.register(layoutName, TabletLyricTypography::applyToInflatedLayout)
+        LayoutInflationRegistry.register(layoutName) { view ->
+            if (FragmentDualPaneResources.isLegacyRoot(view)) typographyCallback(view)
+        }
     }
 }
 
@@ -115,7 +123,9 @@ internal object RightLyricsPaneLayout {
     private fun applyVerticalGradientEdges(gradients: View) {
         if (gradients.javaClass.name != ALPHA_GRADIENT_FRAME_LAYOUT || gradients.height <= 0) return
         runCatching {
-            val profile = AlphaGradientEdgeFieldProfiles.resolve(gradients.javaClass)
+            val profile = (if (FragmentDualPaneResources.isLegacyRoot(gradients))
+                AlphaGradientEdgeFieldProfiles.resolve(gradients.javaClass)
+            else AlphaGradientEdgeFieldProfiles.resolve(gradients.javaClass, targetBuild(gradients.context)))
                 ?: error("AlphaGradientFrameLayout edge profile was unavailable")
             profile.vertical.forEach { fieldName ->
                 setGradientEdge(gradients, fieldName, enabled = true)
