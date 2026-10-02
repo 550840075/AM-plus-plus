@@ -8,22 +8,22 @@ import org.junit.Test
 /** Guards the tablet-only typography seam without constraining blur internals. */
 class FutureLyricBlurStructuralRegressionTest {
     private val portSource: String by lazy {
-        sourceFile("OpenSourceLyricBlurPort.kt").readText()
+        sourceFile("OpenSourceLyricBlurPort.kt").readRefactorComponent()
     }
     private val featureSource: String by lazy {
-        sourceFile("FutureLyricBlurFeature.kt").readText()
+        sourceFile("FutureLyricBlurFeature.kt").readRefactorComponent()
     }
     private val targetSource: String by lazy {
-        sourceFile("AppleMusicBidirectionalLyricBlurTarget.kt").readText()
+        sourceFile("AppleMusicBidirectionalLyricBlurTarget.kt").readRefactorComponent()
     }
     private val typographySource: String by lazy {
-        sourceFile("TabletLyricTypography.kt").readText()
+        sourceFile("TabletLyricTypography.kt").readRefactorComponent()
     }
     private val dualPaneSource: String by lazy {
-        sourceFile("AppleMusicDualPaneTarget.kt").readText()
+        sourceFile("AppleMusicDualPaneTarget.kt").readRefactorComponent()
     }
     private val rendererSource: String by lazy {
-        sourceFile("LyricBlurRenderer.kt").readText()
+        sourceFile("LyricBlurRenderer.kt").readRefactorComponent()
     }
 
     @Test

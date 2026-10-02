@@ -1,4 +1,7 @@
-package dev.amenhancer.module.hook
+package dev.amenhancer.module.lyrics.source
+
+import dev.amenhancer.module.hook.AutoLyricsCandidate
+import dev.amenhancer.module.hook.TtmlTimingPolicy
 
 import dev.amenhancer.module.lyrics.TtmlInputPolicy
 import dev.amenhancer.module.lyrics.AmllTtmlFormatConverter

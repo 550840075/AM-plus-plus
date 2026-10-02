@@ -1,5 +1,11 @@
 package dev.amenhancer.module.hook
 
+import dev.amenhancer.module.lyrics.source.LunabeatClient
+import dev.amenhancer.module.lyrics.source.HttpLyricTransport
+import dev.amenhancer.module.lyrics.source.FileLunabeatCatalogCache
+import dev.amenhancer.module.lyrics.source.AutoLyricsSourceResolver
+import dev.amenhancer.module.lyrics.source.AmllTtmlClient
+import dev.amenhancer.module.lyrics.source.AmLyricsClient
 import android.app.Application
 import dev.amenhancer.module.config.EmbeddedConfigurationSession
 import dev.amenhancer.module.config.EmbeddedContentManager

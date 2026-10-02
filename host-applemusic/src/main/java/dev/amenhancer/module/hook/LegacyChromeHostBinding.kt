@@ -9,6 +9,11 @@ import java.util.IdentityHashMap
 
 /** A binding owns all reflective discovery. Callbacks use the cached members. */
 internal class LegacyChromeHostBinding(private val activity: Activity) : ChromeHostBinding {
+    override val pageFamily = HostPageFamily.LEGACY_ACTIVITY
+    override val viewSessionIdentity: Any get() = activity.window.decorView
+    override fun regions() = PlayerRegions(find(ChromeResource.BOTTOM_NAVIGATION), NavigationPlacement.BOTTOM,
+        find(ChromeResource.MINI_PLAYER) ?: find(ChromeResource.MINI_PLAYER_TOUCH_PANEL),
+        find(ChromeResource.PLAYER_SHEET_CONTAINER), restrictedPlayerContainer = false)
     private val build = targetBuild(activity)
     private val profile = checkNotNull(AppleMusicHostProfiles.find(build.packageName, build.versionName, build.versionCode))
         .document.getJSONObject("chrome")
@@ -17,6 +22,8 @@ internal class LegacyChromeHostBinding(private val activity: Activity) : ChromeH
         activity.resources.getIdentifier(resource.getString("name"),resource.getString("type"),build.packageName)
     }
     private val views = HashMap<ChromeResource, View?>()
+    private var configuration = android.content.res.Configuration(activity.resources.configuration)
+    private var dimensions = readDimensions()
     private val methods = HashMap<Pair<Class<*>,String>,Method>()
     private val nav = profile.getJSONObject("navigation")
     private val behavior = profile.getJSONObject("behavior")
@@ -30,12 +37,22 @@ internal class LegacyChromeHostBinding(private val activity: Activity) : ChromeH
     private val collapsedField by lazy { base.getDeclaredField(behavior.getString("collapsedTopField")).apply { isAccessible=true } }
     private val expandedMethod by lazy { method(base,behavior.getString("expandedTopMethod")) }
     override fun resourceId(role: ChromeResource): Int = ids.getValue(role)
-    override fun find(role: ChromeResource): View? = views.getOrPut(role) {
-        resourceId(role).takeIf { it!=0 }?.let { activity.findViewById(it) }
+    override fun find(role: ChromeResource): View? {
+        if (views.containsKey(role)) return views[role]
+        return resourceId(role).takeIf { it!=0 }?.let { activity.findViewById<View>(it) }
+            .also { views[role]=it }
     }
-    override fun invalidateViews() { views.clear() }
-    override fun dimension(role: ChromeResource): Int = resourceId(role).takeIf { it!=0 }
-        ?.let(activity.resources::getDimensionPixelSize) ?: 0
+    override fun invalidateViews() {
+        views.clear()
+        if (configuration != activity.resources.configuration) {
+            configuration=android.content.res.Configuration(activity.resources.configuration)
+            dimensions=readDimensions()
+        }
+    }
+    private fun readDimensions(): Map<ChromeResource,Int> = ChromeResource.entries
+        .filter { profile.getJSONObject("resources").getJSONObject(it.name).getString("type")=="dimen" }
+        .associateWith { role -> resourceId(role).takeIf { it!=0 }?.let(activity.resources::getDimensionPixelSize) ?: 0 }
+    override fun dimension(role: ChromeResource): Int = dimensions[role] ?: 0
     override fun playerBehavior(preferPlayerRuntime: Boolean): Any? {
         val fields=generateSequence(activity.javaClass as Class<*>?) { it.superclass }
             .flatMap { it.declaredFields.asSequence() }.toList()

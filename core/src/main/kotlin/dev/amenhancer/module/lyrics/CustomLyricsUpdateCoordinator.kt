@@ -1,11 +1,11 @@
 package dev.amenhancer.module.lyrics
 
-import dev.amenhancer.module.hook.AmLyricsClient
-import dev.amenhancer.module.hook.AmLyricsIndex
-import dev.amenhancer.module.hook.AmLyricsIndexEntry
-import dev.amenhancer.module.hook.LunabeatCatalog
-import dev.amenhancer.module.hook.LunabeatClient
-import dev.amenhancer.module.hook.LunabeatSong
+import dev.amenhancer.module.lyrics.source.AmLyricsClient
+import dev.amenhancer.module.lyrics.source.AmLyricsIndex
+import dev.amenhancer.module.lyrics.source.AmLyricsIndexEntry
+import dev.amenhancer.module.lyrics.source.LunabeatCatalog
+import dev.amenhancer.module.lyrics.source.LunabeatClient
+import dev.amenhancer.module.lyrics.source.LunabeatSong
 import dev.amenhancer.module.model.CustomLyricsEntry
 import dev.amenhancer.module.model.CustomLyricsManifest
 import dev.amenhancer.module.model.CustomLyricsSources
@@ -428,7 +428,7 @@ class CustomLyricsUpdateCoordinator(
         private const val FUTURE_POLL_MS = 100L
 
         fun fromClients(
-            amll: dev.amenhancer.module.hook.AmllTtmlClient,
+            amll: dev.amenhancer.module.lyrics.source.AmllTtmlClient,
             amLyrics: AmLyricsClient,
             lunabeat: LunabeatClient,
             maxConcurrency: Int = DEFAULT_CONCURRENCY,

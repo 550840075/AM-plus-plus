@@ -75,10 +75,10 @@ object ModernXposedRuntime {
         return true
     }
 
-    fun hookAllMethods(type: Class<*>, name: String, callback: ModernMethodHook): Set<Executable> =
+    fun hookAllMethods(type: Class<*>, name: String, callback: ModernMethodHook, scope: HookRegistrationScope? = null): Set<Executable> =
         type.declaredMethods
             .filter { it.name == name }
-            .onEach { hookMethod(it, callback) }
+            .onEach { hookMethod(it, callback, scope) }
             .toSet()
 
     fun callMethod(receiver: Any, name: String, vararg args: Any?): Any? {

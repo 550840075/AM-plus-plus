@@ -1,4 +1,5 @@
 package dev.amenhancer.module.ui
+import dev.amenhancer.module.hook.readRefactorComponent
 
 import java.io.File
 import org.junit.Assert.assertFalse
@@ -9,7 +10,7 @@ class CustomLyricsListPageStructuralRegressionTest {
     private fun projectFile(relativePath: String): String = sequenceOf(
         File(relativePath),
         File("../$relativePath"),
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     @Test
@@ -95,7 +96,7 @@ class CustomLyricsListPageStructuralRegressionTest {
         assertTrue(embeddedHost.contains("onUpdate = { updateEmbeddedLyrics(activity) }"))
         assertTrue(embeddedHost.contains("label = \"更新\""))
         assertTrue(embeddedHost.contains("description = \"歌词更新\""))
-        assertTrue(embeddedHost.contains("private fun updateEmbeddedLyrics(activity: Activity)"))
+        assertTrue(embeddedHost.contains("internal fun EmbeddedSettingsHost.updateEmbeddedLyrics(activity: Activity)"))
         assertFalse(embeddedHost.contains("syncEmbeddedGitHub"))
         assertFalse(embeddedHost.contains("syncFromGitHub"))
     }

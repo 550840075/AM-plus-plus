@@ -1,5 +1,6 @@
 package dev.amenhancer.module.hook
 
+import dev.amenhancer.module.lyrics.source.HttpLyricTransport
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,7 +18,7 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     private fun projectFile(relativePath: String): String = sequenceOf(
         File(relativePath),
         File("../$relativePath"),
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     @Test

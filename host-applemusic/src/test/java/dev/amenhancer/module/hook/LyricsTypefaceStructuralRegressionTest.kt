@@ -119,5 +119,5 @@ class LyricsTypefaceStructuralRegressionTest {
         File("../hook-runtime/src/main/java/dev/amenhancer/module/$relative"),
 
         File("src/main/java/dev/amenhancer/module/$relative"),
-    ).firstOrNull(File::isFile)?.readText() ?: error("$relative was not found")
+    ).firstOrNull(File::isFile)?.readRefactorComponent() ?: error("$relative was not found")
 }

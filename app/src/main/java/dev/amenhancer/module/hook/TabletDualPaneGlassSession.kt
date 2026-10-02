@@ -76,13 +76,13 @@ internal class TabletDualPaneGlassSession(
         // dual-pane artwork_container's visual translation. This shift restores
         // the thumbnail's actual screen origin and fades out at the full view.
         val sourceCorrection = artworkStartOffsetY ?: -container.translationY
-        artwork.translationY += sourceCorrection * (1f - progress)
+        writeOwnedTransform(artwork, "translationY", artwork.translationY + sourceCorrection * (1f - progress))
         if (progress > 0f && miniCover != null && miniCover.width > 0 && miniCover.height > 0) {
             val source = IntArray(2).also(miniCover::getLocationOnScreen)
             val target = IntArray(2).also(artwork::getLocationOnScreen)
             // Apple's full cover can run above the glass while the sheet is still
             // opening. Its native scale and horizontal motion remain untouched.
-            if (target[1] < source[1]) artwork.translationY += (source[1] - target[1]).toFloat()
+            if (target[1] < source[1]) writeOwnedTransform(artwork, "translationY", artwork.translationY + (source[1] - target[1]).toFloat())
         }
     }
 
@@ -190,7 +190,7 @@ internal class TabletDualPaneGlassSession(
         // Park the row exactly offscreen and avoid subpixel invalidations.
         val target = if (progress >= 0.6f) extent.toFloat() else (1f - exp(-20f * progress)) * extent
         if (progress == 0f || progress >= 0.6f || progress < 0.35f || abs(frame.translationY - target) >= 0.5f) {
-            if (frame.translationY != target) frame.translationY = target
+            if (frame.translationY != target) writeOwnedTransform(frame, "translationY", target)
         }
         val scrim = navScrim ?: return
         val container = scrim.parent as? ViewGroup ?: return

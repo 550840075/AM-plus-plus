@@ -1,5 +1,6 @@
 package dev.amenhancer.module.hook
 
+import dev.amenhancer.module.lyrics.source.AutoLyricsSourceResolver
 import dev.amenhancer.module.lyrics.CustomLyricsFilePolicy
 import dev.amenhancer.module.lyrics.CustomLyricsDraft
 import dev.amenhancer.module.lyrics.CustomLyricsSaveResult

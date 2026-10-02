@@ -33,7 +33,7 @@ class TabletLiquidGlassStructuralRegressionTest {
         File("../core/src/main/kotlin/$relativePath"),
         File("../hook-runtime/src/main/java/$relativePath"),
 
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     /** Collapses line wraps so multi-line expressions can be matched as written prose. */
@@ -56,7 +56,10 @@ class TabletLiquidGlassStructuralRegressionTest {
             constructionSites.isNotEmpty(),
         )
         constructionSites.forEach { (build, text) ->
-            val gates = text.substring(maxOf(0, build - 600), build)
+            val gates = normalized(runtime).substringAfter("private fun desiredSessionType")
+                .substringBefore("private fun fail")
+            assertTrue(runtime.contains("val desired = desiredSessionType(activity, config)"))
+            assertTrue(text.substring(maxOf(0, build - 600), build).contains("if (desired == TabletDualPaneGlassSession::class.java)"))
             assertTrue(gates.contains("TabletModeQualifier.isEligible"))
             assertTrue(gates.contains("phoneLiquidGlassEnabled"))
         }

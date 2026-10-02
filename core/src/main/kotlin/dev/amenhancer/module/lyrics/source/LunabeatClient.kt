@@ -1,4 +1,4 @@
-package dev.amenhancer.module.hook
+package dev.amenhancer.module.lyrics.source
 
 import dev.amenhancer.module.lyrics.TtmlInputPolicy
 import java.io.File

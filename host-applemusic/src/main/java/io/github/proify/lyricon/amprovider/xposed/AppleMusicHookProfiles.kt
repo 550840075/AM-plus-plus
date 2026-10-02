@@ -391,11 +391,11 @@ internal data class AppleMusicHookProfile(
 }
 
 /**
- * Apple Music 混淆版本档案的唯一维护入口。
+ * JSON 版本资料到旧 HLE 解析引擎的兼容桥。
  *
  * 后续版本更新流程：反编译新版 APK，确认每个 [AppleMusicHookPoint] 的目标类和方法，
- * 然后在 [KNOWN_PROFILES] 前部新增一份档案。未知版本会按“较新档案优先”的顺序尝试
- * 已知候选，但只有通过对应方法签名校验的目标才会被采用。
+ * 在 host-profiles 中记录精确 tuple、证据和契约；index 决定已审核候选顺序。
+ * 生产资格由统一注册表精确判断。此处保留旧引擎的候选回退行为。
  */
 internal object AppleMusicHookProfiles {
     private val KNOWN_PROFILES by lazy {

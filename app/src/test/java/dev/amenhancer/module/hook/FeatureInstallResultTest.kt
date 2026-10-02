@@ -30,7 +30,7 @@ class FeatureInstallResultTest {
         File("../core/src/main/kotlin/$relativePath"),
         File("../hook-runtime/src/main/java/$relativePath"),
 
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     @Test

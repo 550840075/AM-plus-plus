@@ -2369,6 +2369,93 @@
       ],
       "composeType": "androidx.compose.ui.platform.ComposeView",
       "pagerType": "androidx.viewpager2.widget.ViewPager2"
+    },
+    "hooks": {
+      "behaviorClass": "com.apple.android.music.player.PlayerBottomSheetBehavior",
+      "coordinatorClass": "androidx.coordinatorlayout.widget.CoordinatorLayout",
+      "holderClasses": [
+        "com.apple.android.music.common.activity.PlayerActivity$StackedBottomNavigationHolder",
+        "com.apple.android.music.common.activity.PlayerActivity$FlatBottomNavigationHolder"
+      ],
+      "slideMethod": "c",
+      "peekMethod": "F",
+      "artworkField": "a",
+      "artworkSlideMethod": "c"
     }
-  }
+  },
+  "settings": {
+    "playerActivity": "com.apple.android.music.common.activity.PlayerActivity",
+    "mainActivity": "com.apple.android.music.common.MainContentActivity",
+    "fragmentClass": "com.apple.android.music.settings.fragment.SettingsFragment",
+    "preferenceClass": "androidx.preference.Preference",
+    "screenClass": "androidx.preference.PreferenceScreen",
+    "findMethod": "t0",
+    "keyField": "x",
+    "titleMethod": "K",
+    "summaryMethod": "J",
+    "addMethod": "P"
+  },
+  "layoutVariants": {
+    "gradientEdges": [
+      {
+        "vertical": [
+          "P",
+          "Q"
+        ],
+        "horizontal": [
+          "R",
+          "S"
+        ],
+        "requiredIntegers": [
+          "T",
+          "U",
+          "V",
+          "W"
+        ]
+      },
+      {
+        "vertical": [
+          "R",
+          "S"
+        ],
+        "horizontal": [
+          "T",
+          "U"
+        ],
+        "requiredIntegers": [
+          "V",
+          "W"
+        ]
+      }
+    ],
+    "lyricsFields": [
+      {
+        "binding": "g0",
+        "container": "S",
+        "recycler": "Y",
+        "gradients": "e0",
+        "synchronizedMetrics": [
+          "x0",
+          "y0"
+        ]
+      },
+      {
+        "binding": "i0",
+        "container": "U",
+        "recycler": "a0",
+        "gradients": "g0",
+        "synchronizedMetrics": [
+          "z0",
+          "A0"
+        ]
+      }
+    ]
+  },
+  "ambiguityPolicy": "legacy-reviewed-first-match-exceptions",
+  "legacyFirstMatchExceptions": [
+    "preference-group-accessors",
+    "preference-click-interface",
+    "preference-screen-backing-field",
+    "activity-bottom-sheet-field"
+  ]
 }

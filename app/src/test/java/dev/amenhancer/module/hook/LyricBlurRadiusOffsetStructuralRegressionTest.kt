@@ -14,7 +14,7 @@ class LyricBlurRadiusOffsetStructuralRegressionTest {
         File("../core/src/main/kotlin/dev/amenhancer/module/hook/$fileName"),
         File("../hook-runtime/src/main/java/dev/amenhancer/module/hook/$fileName"),
 
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$fileName was not found from the unit-test working directory")
 
     @Test

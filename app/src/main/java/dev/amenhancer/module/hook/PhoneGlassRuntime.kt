@@ -45,29 +45,32 @@ internal object PhoneGlassRuntime {
             try {
                 installHooks(activity.classLoader, build)
                 sessions[activity]?.takeUnless { it.ownsCurrentHierarchy() }?.let { it.close(); sessions.remove(activity) }
-                val desired = createSession(activity, config) { error -> fail(activity, config, error) }
+                val desired = desiredSessionType(activity, config)
                 if (desired == null) { sessions.remove(activity)?.close(); return@post }
-                val session = sessions[activity]?.takeIf { it.javaClass == desired.javaClass }
-                    ?: desired.also { sessions.remove(activity)?.close(); sessions[activity] = it }
+                val session = sessions[activity]?.takeIf { it.javaClass == desired }
+                    ?: (if (desired == TabletDualPaneGlassSession::class.java)
+                        TabletDualPaneGlassSession(activity,config) { error -> fail(activity,config,error) }
+                    else PhoneGlassSession(activity,config) { error -> fail(activity,config,error) })
+                        .also { sessions.remove(activity)?.close(); sessions[activity] = it }
                 session.attachAvailableViews()
             } catch (error: Throwable) { fail(activity, config, error) }
         }
     }
 
     /** Routes the host form; null means no session may exist for this activity right now. */
-    private fun createSession(activity: Activity, config: TargetConfigClient, onFail: (Throwable) -> Unit): GlassSession? {
+    private fun desiredSessionType(activity: Activity, config: TargetConfigClient): Class<out GlassSession>? {
         val build = targetBuild(activity)
         if (config.settings().phoneLiquidGlassEnabled &&
             !TabletModeQualifier.isOfficialTablet(activity) &&
             GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, dev.amenhancer.host.applemusic.AppleMusicHostProfiles.supportsGlass(build.versionCode, build.versionName), GlassHostForm.PhoneStacked)
         ) {
-            return PhoneGlassSession(activity, config, onFail)
+            return PhoneGlassSession::class.java
         }
         if (config.settings().phoneLiquidGlassEnabled &&
             TabletModeQualifier.isEligible(activity) &&
             GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, dev.amenhancer.host.applemusic.AppleMusicHostProfiles.supportsGlass(build.versionCode, build.versionName), GlassHostForm.TabletDualPane)
         ) {
-            return TabletDualPaneGlassSession(activity, config, onFail)
+            return TabletDualPaneGlassSession::class.java
         }
         return null
     }
@@ -75,7 +78,7 @@ internal object PhoneGlassRuntime {
     private fun fail(activity: Activity, config: TargetConfigClient, error: Throwable) {
         failed += activity
         sessions.remove(activity)?.close()
-        ModernXposedRuntime.log("liquid glass 1586 restored native UI", error)
+        ModernXposedRuntime.log("liquid glass restored native UI", error)
         config.reportHealth(FeatureHealth(ModuleConstants.FEATURE_PHONE_LIQUID_GLASS, FeatureState.FAILED,
             "玻璃接入失败，已恢复原生界面：${error.javaClass.simpleName}: ${error.message}", targetBuild(activity).displayName))
     }

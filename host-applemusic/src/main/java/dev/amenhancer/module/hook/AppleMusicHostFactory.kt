@@ -6,6 +6,20 @@ import dev.amenhancer.module.config.TargetConfigClient
 
 /** Apple Music composition; the application supplies configuration and automatic-lyric services. */
 object AppleMusicHostFactory {
+    fun installDensity(application: Application, configuredDpi: Int): AppleMusicDpiOverrideStatus = AppleMusicDpiOverrideRuntime.install(application,configuredDpi)
+    fun densityStatus(): AppleMusicDpiOverrideStatus = AppleMusicDpiOverrideRuntime.status
+
+    private fun settingsNames(context: android.content.Context): org.json.JSONObject {
+        val build=targetBuild(context)
+        return checkNotNull(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(build.packageName,build.versionName,build.versionCode)).document.getJSONObject("settings")
+    }
+    fun settingsActivityMatcher(context: android.content.Context, playerClass: Class<*>?): SettingsActivityMatcher =
+        settingsNames(context).let { LegacySettingsActivityMatcher(playerClass,it.getString("playerActivity"),it.getString("mainActivity")) }
+    fun settingsViewBridge(context: android.content.Context, onOpen: (android.app.Activity)->Unit): SettingsViewBridge =
+        LegacySettingsViewBridge(context,onOpen)
+    fun installSettingsEntry(context: android.content.Context, loader: ClassLoader, observer: SettingsEntryObserver) =
+        LegacySettingsEntryInstaller(context).install(loader,observer)
+
     fun bindChrome(activity: android.app.Activity): ChromeHostBinding = LegacyChromeHostBinding(activity)
     fun installChromeHooks(loader: ClassLoader, build: TargetBuild, observer: ChromeHookObserver): HostSubscription =
         LegacyChromeHookInstaller.install(loader, build, observer)

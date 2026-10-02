@@ -53,6 +53,7 @@ internal open class PhoneGlassSession(
     protected val config: TargetConfigClient,
     private val failure: (Throwable) -> Unit,
 ) : GlassSession, ViewTreeObserver.OnPreDrawListener {
+    private val transformOwners = IdentityHashMap<View, MutableMap<String, dev.amenhancer.module.host.OwnedHostProperty<Float>>>()
     private val states = IdentityHashMap<View, NativeViewState>()
     private val layerAlphas = IdentityHashMap<View, NativeLayerAlpha>()
     private val visibleGlassRect = android.graphics.Rect()
@@ -145,6 +146,19 @@ internal open class PhoneGlassSession(
     protected fun find(role: ChromeResource): View? = hostBinding.find(role)
     protected fun dimen(role: ChromeResource): Int = hostBinding.dimension(role)
 
+    protected fun writeOwnedTransform(view: View, property: String, value: Float) {
+        val owner = transformOwners.getOrPut(view) { HashMap() }.getOrPut(property) {
+            when (property) {
+                "scaleX" -> dev.amenhancer.module.host.OwnedHostProperty({ view.scaleX }, { view.scaleX = it })
+                "scaleY" -> dev.amenhancer.module.host.OwnedHostProperty({ view.scaleY }, { view.scaleY = it })
+                "translationX" -> dev.amenhancer.module.host.OwnedHostProperty({ view.translationX }, { view.translationX = it })
+                "translationY" -> dev.amenhancer.module.host.OwnedHostProperty({ view.translationY }, { view.translationY = it })
+                else -> error("Unknown transform property")
+            }
+        }
+        owner.set(value)
+    }
+
     private fun save(view: View): NativeViewState = states.getOrPut(view) { NativeViewState(view) }
 
     /**
@@ -230,7 +244,7 @@ internal open class PhoneGlassSession(
             playerBehavior = findPlayerBehavior()
             if (playerBehavior == null) {
                 if (!retryPending) {
-                    check(behaviorRetries < 20) { "1586 player behavior not ready after retries" }
+                    check(behaviorRetries < 20) { "Native player behavior not ready after retries" }
                     behaviorRetries++
                     retryPending = true
                     attachHandler.postDelayed(retryAttach, 50L)
@@ -272,7 +286,7 @@ internal open class PhoneGlassSession(
                 HostConfiguration {
                     NativeLiquidButton(bg, input, glassExpansion, panelBlur = navBlurDp.dp, autoClip = geometry.sideBySide,
                         miniHeightDp = geometry.miniHeightDp) { sx, sy, x, y ->
-                        miniContent?.let { v -> v.scaleX = sx; v.scaleY = sy; v.translationX = x; v.translationY = y }
+                        miniContent?.let { v -> writeOwnedTransform(v, "scaleX", sx); writeOwnedTransform(v, "scaleY", sy); writeOwnedTransform(v, "translationX", x); writeOwnedTransform(v, "translationY", y) }
                     }
                 }
             }
@@ -286,6 +300,7 @@ internal open class PhoneGlassSession(
             })
             if (activated) prepareMini()
         }
+        states.forEach { (view,state) -> state.captureOwned(view) }
     }
 
     override fun ownsCurrentHierarchy(): Boolean {
@@ -357,6 +372,7 @@ internal open class PhoneGlassSession(
 
     override fun onPreDraw(): Boolean {
         if (closed || failureScheduled) return true
+        states.forEach { (view,state) -> state.observeNative(view) }
         try {
             val now = android.os.SystemClock.uptimeMillis()
             if (now >= nextSettingsCheck) {
@@ -399,6 +415,7 @@ internal open class PhoneGlassSession(
                 )
             }
         } catch (error: Throwable) { scheduleFailure(error) }
+        finally { states.forEach { (view,state) -> state.captureOwned(view) } }
         return true
     }
 
@@ -768,6 +785,8 @@ internal open class PhoneGlassSession(
         listOfNotNull(navGlass, navScrim, miniGlass).forEach { (it.parent as? ViewGroup)?.removeView(it) }
         states.forEach { (view, state) -> state.restore(view) }
         states.clear()
+        transformOwners.values.forEach { it.values.forEach(AutoCloseable::close) }
+        transformOwners.clear()
         layerAlphas.forEach { (view, state) -> view.alpha = state.native }
         layerAlphas.clear()
         nativePeek.latest?.let { runCatching { writePeek(it) } }
@@ -789,43 +808,49 @@ internal open class PhoneGlassSession(
 
 
     private class NativeViewState(view: View) {
-        val background = view.background
-        val alpha = view.alpha
-        private val visibility = view.visibility
-        private val accessibility = view.importantForAccessibility
-        private val params = view.layoutParams
-        private val originalWidth = params.width
-        private val originalHeight = params.height
-        private val margins = (params as? ViewGroup.MarginLayoutParams)?.let { intArrayOf(it.leftMargin, it.topMargin, it.rightMargin, it.bottomMargin) }
-        private val padding = intArrayOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom)
-        val bottomPadding get() = padding[3]
+        private val currentValues = HashMap<String,Any?>(24)
+        private val ownership = dev.amenhancer.module.host.OwnedHostState(snapshot(view))
+        val background get() = ownership.nativeValue("background") as? android.graphics.drawable.Drawable
+        val bottomPadding get() = ownership.nativeValue("paddingBottom") as Int
+        val outlineProvider get() = ownership.nativeValue("outline") as? android.view.ViewOutlineProvider
         var scrollPadding = false
         var scrollPaddingActive = false
-        private val clipChildren = (view as? ViewGroup)?.clipChildren
-        private val clipPadding = (view as? ViewGroup)?.clipToPadding
-        val outlineProvider = view.outlineProvider
-        private val transform = floatArrayOf(view.scaleX, view.scaleY, view.translationX, view.translationY)
+        fun observeNative(view: View) = ownership.observeNative(snapshot(view))
+        fun captureOwned(view: View) = ownership.captureOwned(snapshot(view))
         fun restoreInteraction(view: View) {
-            if (view.visibility != visibility) view.visibility = visibility
-            if (view.importantForAccessibility != accessibility) view.importantForAccessibility = accessibility
+            view.visibility = ownership.nativeValue("visibility") as Int
+            view.importantForAccessibility = ownership.nativeValue("accessibility") as Int
         }
         fun restoreScroll(view: View) {
-            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, padding[3])
-            if (view is ViewGroup) clipPadding?.let { view.clipToPadding = it }
+            val restored=ownership.restoreValues(snapshot(view))
+            view.setPadding(view.paddingLeft,view.paddingTop,view.paddingRight,restored.getValue("paddingBottom") as Int)
+            if (view is ViewGroup) view.clipToPadding=restored.getValue("clipPadding") as Boolean
         }
         fun restore(view: View) {
-            view.background = background; view.alpha = alpha; view.visibility = visibility
-            view.outlineProvider = outlineProvider
-            view.importantForAccessibility = accessibility
-            params.width = originalWidth
-            params.height = originalHeight
-            if (params is ViewGroup.MarginLayoutParams && margins != null) {
-                params.setMargins(margins[0], margins[1], margins[2], margins[3])
+            val values=ownership.restoreValues(snapshot(view))
+            view.background=values["background"] as? android.graphics.drawable.Drawable
+            view.alpha=values.getValue("alpha") as Float
+            view.visibility=values.getValue("visibility") as Int
+            view.importantForAccessibility=values.getValue("accessibility") as Int
+            view.outlineProvider=values["outline"] as? android.view.ViewOutlineProvider
+            val params=view.layoutParams
+            params.width=values.getValue("width") as Int; params.height=values.getValue("height") as Int
+            if (params is ViewGroup.MarginLayoutParams) params.setMargins(values.getValue("leftMargin") as Int,
+                values.getValue("topMargin") as Int,values.getValue("rightMargin") as Int,values.getValue("bottomMargin") as Int)
+            view.layoutParams=params
+            view.setPadding(values.getValue("paddingLeft") as Int,values.getValue("paddingTop") as Int,
+                values.getValue("paddingRight") as Int,values.getValue("paddingBottom") as Int)
+            if (view is ViewGroup) { view.clipChildren=values.getValue("clipChildren") as Boolean;view.clipToPadding=values.getValue("clipPadding") as Boolean }
+        }
+        private fun snapshot(view: View): Map<String,Any?> = currentValues.apply {
+            put("background",view.background);put("alpha",view.alpha);put("visibility",view.visibility)
+            put("accessibility",view.importantForAccessibility);put("outline",view.outlineProvider)
+            put("width",view.layoutParams.width);put("height",view.layoutParams.height)
+            (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+                put("leftMargin",it.leftMargin);put("topMargin",it.topMargin);put("rightMargin",it.rightMargin);put("bottomMargin",it.bottomMargin)
             }
-            view.layoutParams = params
-            view.setPadding(padding[0], padding[1], padding[2], padding[3])
-            if (view is ViewGroup) { clipChildren?.let { view.clipChildren = it }; clipPadding?.let { view.clipToPadding = it } }
-            view.scaleX = transform[0]; view.scaleY = transform[1]; view.translationX = transform[2]; view.translationY = transform[3]
+            put("paddingLeft",view.paddingLeft);put("paddingTop",view.paddingTop);put("paddingRight",view.paddingRight);put("paddingBottom",view.paddingBottom)
+            (view as? ViewGroup)?.let { put("clipChildren",it.clipChildren);put("clipPadding",it.clipToPadding) }
         }
     }
 }

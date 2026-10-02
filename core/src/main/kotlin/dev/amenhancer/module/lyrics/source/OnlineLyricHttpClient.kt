@@ -1,4 +1,4 @@
-package dev.amenhancer.module.hook
+package dev.amenhancer.module.lyrics.source
 
 import java.net.HttpURLConnection
 import java.net.URL

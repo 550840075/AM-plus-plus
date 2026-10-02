@@ -35,7 +35,7 @@ enum class ChromeResource {
 }
 data class NativeSheetSnapshot(val state: Int, val collapsedTop: Int, val expandedTop: Int)
 data class NativeNavigationSnapshot(val menu: Menu, val selectedId: Int)
-interface ChromeHostBinding : AutoCloseable {
+interface ChromeHostBinding : PlayerSurfacePort, AutoCloseable {
     fun resourceId(role: ChromeResource): Int
     fun find(role: ChromeResource): View?
     fun dimension(role: ChromeResource): Int

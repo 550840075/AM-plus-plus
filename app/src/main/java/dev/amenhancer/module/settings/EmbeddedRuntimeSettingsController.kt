@@ -1,4 +1,6 @@
-package dev.amenhancer.module.ui
+package dev.amenhancer.module.settings
+
+import dev.amenhancer.module.ui.*
 
 import android.content.Context
 import android.graphics.Typeface
@@ -10,12 +12,12 @@ import dev.amenhancer.module.config.EmbeddedContentManager
 import dev.amenhancer.module.config.EmbeddedLyricsMutationResult
 import dev.amenhancer.module.font.FontFilePolicy
 import dev.amenhancer.module.font.FontImportResult
-import dev.amenhancer.module.hook.AmLyricsClient
-import dev.amenhancer.module.hook.AmLyricsIndexEntry
-import dev.amenhancer.module.hook.AmllTtmlClient
-import dev.amenhancer.module.hook.HttpLyricTransport
-import dev.amenhancer.module.hook.FileLunabeatCatalogCache
-import dev.amenhancer.module.hook.LunabeatClient
+import dev.amenhancer.module.lyrics.source.AmLyricsClient
+import dev.amenhancer.module.lyrics.source.AmLyricsIndexEntry
+import dev.amenhancer.module.lyrics.source.AmllTtmlClient
+import dev.amenhancer.module.lyrics.source.HttpLyricTransport
+import dev.amenhancer.module.lyrics.source.FileLunabeatCatalogCache
+import dev.amenhancer.module.lyrics.source.LunabeatClient
 import dev.amenhancer.module.lyrics.CustomLyricsDraft
 import dev.amenhancer.module.lyrics.CustomLyricsBatchSaveResult
 import dev.amenhancer.module.lyrics.CustomLyricsFilePolicy
@@ -33,17 +35,6 @@ import dev.amenhancer.module.model.CustomLyricsSources
 import dev.amenhancer.module.model.ModuleSettings
 import java.io.File
 import java.io.FileOutputStream
-
-internal enum class EmbeddedOnlineSource {
-    AMLL,
-    AM_LYRICS,
-    LUNABEAT,
-}
-
-internal sealed interface EmbeddedActionResult {
-    data class Done(val message: String) : EmbeddedActionResult
-    data class Failed(val message: String) : EmbeddedActionResult
-}
 
 /** Android/SAF/network facade consumed only by the in-host settings dialog. */
 internal class EmbeddedRuntimeSettingsController(

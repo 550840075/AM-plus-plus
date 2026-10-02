@@ -14,7 +14,7 @@ import org.junit.Test
  */
 class LyricBlurClearAlphaStructuralRegressionTest {
     private val rendererSource: String by lazy {
-        sourceFile("LyricBlurRenderer.kt").readText()
+        sourceFile("LyricBlurRenderer.kt").readRefactorComponent()
     }
 
     private val clearBody: String by lazy {
