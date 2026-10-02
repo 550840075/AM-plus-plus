@@ -140,6 +140,24 @@ internal object ConstraintLayoutPane {
         return true
     }
 
+    /** 1606 native animation reads layout coordinates; centering must be an actual top margin. */
+    fun configureNativeArtworkContainer(artwork: View, sizePx: Int, topMarginPx: Int): Boolean {
+        val params = constraintMarginParams(artwork, ARTWORK_CONTAINER)
+        if (params.width == sizePx && params.height == sizePx && params.topMargin == topMarginPx && params.bottomMargin == 0 &&
+            constraintField(params.javaClass, "topToTop")?.getInt(params) == PARENT_ID &&
+            constraintField(params.javaClass, "topToBottom")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "bottomToTop")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "bottomToBottom")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "dimensionRatio")?.get(params) == null) return false
+        params.width = sizePx; params.height = sizePx; params.topMargin = topMarginPx; params.bottomMargin = 0
+        params.setObject("dimensionRatio", null)
+        params.setInt("topToTop", PARENT_ID); params.setInt("topToBottom", -1)
+        // A remaining bottom anchor would apply vertical bias on top of the explicit margin.
+        params.setInt("bottomToTop", -1); params.setInt("bottomToBottom", -1)
+        artwork.layoutParams = params
+        return true
+    }
+
     /**
      * Mirrors the modified layout-land/bottom_navigation.xml by converting the
      * stock flat resource tree into full-width tablet chrome. Apple Music's

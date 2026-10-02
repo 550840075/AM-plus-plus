@@ -50,10 +50,9 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
     private var artworkContainer: View? = null
     private var metadataBarrier: View? = null
     private var artworkParams: ViewGroup.LayoutParams? = null
-    private var artworkTranslationY = 0f
     private var nativeArtworkSize = 0
     private var artworkDirty = true
-    private val artworkLocation = IntArray(2)
+    private val artworkParentLocation = IntArray(2)
     private val hostLocation = IntArray(2)
     private val rootLocation = IntArray(2)
     private val barrierLocation = IntArray(2)
@@ -221,7 +220,6 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
         val artwork = artworkContainer ?: find(songHost, "artwork_container")?.also { view ->
             artworkContainer = view
             artworkParams = view.layoutParams.javaClass.getConstructor(ViewGroup.LayoutParams::class.java).newInstance(view.layoutParams) as ViewGroup.LayoutParams
-            artworkTranslationY = view.translationY
             view.addOnLayoutChangeListener(artworkListener)
             (view.parent as? View)?.addOnLayoutChangeListener(artworkListener)
         } ?: return
@@ -232,17 +230,19 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
         if (nativeArtworkSize == 0) nativeArtworkSize = artwork.width
         songHost.getLocationInWindow(hostLocation)
         root.rootView.getLocationInWindow(rootLocation)
-        artwork.getLocationInWindow(artworkLocation)
+        val artworkParent = artwork.parent as? View ?: return
+        artworkParent.getLocationInWindow(artworkParentLocation)
         barrier.getLocationInWindow(barrierLocation)
         @Suppress("DEPRECATION")
         val topInset = if (android.os.Build.VERSION.SDK_INT >= 30)
             root.rootWindowInsets?.getInsets(android.view.WindowInsets.Type.statusBars())?.top ?: 0
         else root.rootWindowInsets?.systemWindowInsetTop ?: 0
         val top = maxOf(hostLocation[1], rootLocation[1] + topInset)
-        val layout = TabletArtworkLayoutPolicy.resolve((barrierLocation[1] - top).toFloat(), nativeArtworkSize.toFloat()) ?: return
-        val delta = top + layout.edgeGapPx - artworkLocation[1]
-        if (kotlin.math.abs(delta) > .5f) artwork.translationY += delta
-        val changed = ConstraintLayoutPane.configureArtworkContainer(artwork, nativeArtworkSize)
+        val topMargin = TabletArtworkLayoutPolicy.nativeTopMargin(
+            top.toFloat(), barrierLocation[1].toFloat(), artworkParentLocation[1].toFloat(), nativeArtworkSize.toFloat()) ?: return
+        // Native i.d uses layout rectangles, which exclude ancestor translations. Put the
+        // resting cover position in its constraints so the native mini endpoint includes it.
+        val changed = ConstraintLayoutPane.configureNativeArtworkContainer(artwork, nativeArtworkSize, topMargin)
         artworkDirty = changed
         if (changed) root.postInvalidateOnAnimation()
     }
@@ -288,7 +288,7 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
     private fun restoreDecorations() {
         hidden.forEach { (view, visibility) -> view.visibility = visibility }; hidden.clear()
         margins.forEach { (view, top) -> (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let { it.topMargin = top; view.layoutParams = it } }; margins.clear()
-        artworkContainer?.let { view -> artworkParams?.let { view.layoutParams = it }; view.translationY = artworkTranslationY }
+        artworkContainer?.let { view -> artworkParams?.let { view.layoutParams = it } }
         cover = null; artworkContainer = null; metadataBarrier = null
         artworkParams = null; nativeArtworkSize = 0; artworkDirty = true; rightRoot = null; chrome = emptyList()
     }

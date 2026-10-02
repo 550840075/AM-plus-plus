@@ -11,6 +11,19 @@ data class TabletArtworkLayout(
  * the native cover fits in that interval.
  */
 object TabletArtworkLayoutPolicy {
+    /** Express centering in layout space, visible to the native descendant-rectangle animator. */
+    fun nativeTopMargin(
+        playerTopPx: Float,
+        metadataTopPx: Float,
+        parentTopPx: Float,
+        nativeSizePx: Float,
+    ): Int? {
+        if (!playerTopPx.isFinite() || !metadataTopPx.isFinite() || !parentTopPx.isFinite() || !nativeSizePx.isFinite()) return null
+        val layout = resolve(metadataTopPx - playerTopPx, nativeSizePx) ?: return null
+        val margin = playerTopPx + layout.edgeGapPx - parentTopPx
+        return if (margin.isFinite()) kotlin.math.round(margin).toInt() else null
+    }
+
     fun resolve(
         availableHeightPx: Float,
         nativeSizePx: Float,
