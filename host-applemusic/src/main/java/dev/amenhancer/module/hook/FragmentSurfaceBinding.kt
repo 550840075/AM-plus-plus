@@ -55,10 +55,6 @@ internal class FragmentSurfaceBinding(
     private var writing = false
     private val tree = root.viewTreeObserver
     private val layout = ViewTreeObserver.OnGlobalLayoutListener { resolveMini() }
-    private val detach = object : View.OnAttachStateChangeListener {
-        override fun onViewAttachedToWindow(v: View) = Unit
-        override fun onViewDetachedFromWindow(v: View) = close()
-    }
     override val tabletChrome: FragmentTabletChromeBinding? by lazy {
         if (placement != NavigationPlacement.TOP) null else FragmentTabletChromeBinding(root, { region ->
             when (region) {
@@ -82,7 +78,6 @@ internal class FragmentSurfaceBinding(
         resolveMini()
         tree.addOnPreDrawListener(this)
         tree.addOnGlobalLayoutListener(layout)
-        root.addOnAttachStateChangeListener(detach)
     }
 
     private fun resolveMini() {
@@ -219,7 +214,6 @@ internal class FragmentSurfaceBinding(
         if (closed) return
         closed = true
         if (tree.isAlive) { tree.removeOnPreDrawListener(this); tree.removeOnGlobalLayoutListener(layout) }
-        root.removeOnAttachStateChangeListener(detach)
         observers.clear()
         navigation.close()
         tabletChrome?.restore()

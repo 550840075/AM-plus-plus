@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import dev.amenhancer.host.applemusic.AppleMusicHostProfiles
+import dev.amenhancer.module.host.FragmentViewSessions
 import java.util.IdentityHashMap
 
 /** Standalone install seam for the parent composition factory. Legacy chrome is independent. */
@@ -25,45 +26,66 @@ object FragmentChromeFactory {
         check(profile.family == "fragment-content") { "Fragment chrome cannot own ${profile.family}" }
         val contract = FragmentChromeContract(loader, profile.document.getJSONObject("fragmentChrome"))
         val scope = HookRegistrationScope()
-        val bindings = IdentityHashMap<Any, FragmentSurfaceBinding>()
-        val roots = IdentityHashMap<Any, ViewGroup>()
+        val bindings = FragmentViewSessions<Any, ViewGroup, FragmentSurfaceBinding> { binding ->
+            observer.onDestroyed(binding.viewSessionIdentity)
+        }
+        val watched = IdentityHashMap<ViewGroup, View.OnAttachStateChangeListener>()
         val callbacks = IdentityHashMap<Any, IdentityHashMap<Any, Any>>()
         // Native slide events can precede the Fragment view's deferred glass mount.
         val playerProgress = java.util.WeakHashMap<Any, Float>()
         val activityOf = FragmentChromeContract.method(contract.content, "getActivity")
         fun destroy(owner: Any) {
-            roots.remove(owner)
+            val root = bindings.root(owner)
+            val mounted = bindings.hasBinding(owner)
+            root?.let { watched.remove(it)?.let(it::removeOnAttachStateChangeListener) }
             callbacks.remove(owner)?.clear()
-            bindings.remove(owner)?.let { binding ->
-                observer.onDestroyed(binding.viewSessionIdentity)
-                binding.close()
+            try { bindings.destroy(owner) } finally {
+                // A prepared view may disappear before its queued binding is ever constructed.
+                if (!mounted && root != null) observer.onDestroyed(root)
             }
         }
         fun fail(owner: Any?, error: Throwable, expectedRoot: ViewGroup? = null) {
-            if (expectedRoot != null && roots[owner] !== expectedRoot) return
-            val identity = owner?.let { bindings[it]?.viewSessionIdentity }
+            if (expectedRoot != null && (owner == null || !bindings.current(owner, expectedRoot))) return
+            val identity = owner?.let(bindings::root)
             if (owner != null) destroy(owner)
             observer.onFailure(identity, error)
         }
         fun bind(owner: Any, root: ViewGroup) {
-            if (!scope.isActive || roots[owner] !== root) return
-            if (!root.isAttachedToWindow) {
-                root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                    override fun onViewAttachedToWindow(v: View) {
-                        v.removeOnAttachStateChangeListener(this)
-                        runCatching { bind(owner, root) }.onFailure { fail(owner, it, root) }
-                    }
-                    override fun onViewDetachedFromWindow(v: View) = Unit
-                })
-                return
-            }
-            bindings[owner]?.takeIf { it.viewSessionIdentity === root }?.let { return }
-            bindings.remove(owner)?.let { observer.onDestroyed(it.viewSessionIdentity); it.close() }
-            val binding = FragmentSurfaceBinding(owner, activityOf.invoke(owner) as Activity, root, contract,
-                callbacks.getOrPut(owner) { IdentityHashMap() }, { fail(owner, it, root) })
+            if (!scope.isActive || !root.isAttachedToWindow) return
+            val binding = bindings.bind(owner, root) {
+                FragmentSurfaceBinding(owner, activityOf.invoke(owner) as Activity, root, contract,
+                    callbacks.getOrPut(owner) { IdentityHashMap() }, { fail(owner, it, root) })
+            } ?: return
             contract.playerOf.invoke(owner)?.let { player -> playerProgress[player]?.let(binding::slide) }
-            bindings[owner] = binding
             observer.onCreated(binding)
+        }
+        fun prepare(owner: Any, root: ViewGroup) {
+            val previous = bindings.prepare(owner, root)
+            if (previous != null) {
+                watched.remove(previous)?.let(previous::removeOnAttachStateChangeListener)
+                callbacks.remove(owner)?.clear()
+            }
+            if (watched.containsKey(root)) return
+            observer.onPreparing(root)
+            val listener = object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    if (!bindings.current(owner, root)) return
+                    runCatching { observer.onPreparing(root) }.onFailure { fail(owner, it, root) }
+                    root.post { runCatching { bind(owner, root) }.onFailure { fail(owner, it, root) } }
+                }
+                override fun onViewDetachedFromWindow(v: View) {
+                    // Revoke the renderer and native leases together; retain root/actions for reattachment.
+                    if (!bindings.current(owner, root)) return
+                    runCatching {
+                        val mounted = bindings.hasBinding(owner)
+                        bindings.detach(owner, root)
+                        if (!mounted) observer.onDestroyed(root)
+                    }.onFailure { fail(owner, it, root) }
+                }
+            }
+            watched[root] = listener
+            root.addOnAttachStateChangeListener(listener)
+            if (root.isAttachedToWindow) root.post { runCatching { bind(owner, root) }.onFailure { fail(owner, it, root) } }
         }
         fun hook(method: java.lang.reflect.Method, callback: ModernMethodHook) {
             check(ModernXposedRuntime.hookMethod(method, callback, scope)) { "Fragment chrome hook failed: $method" }
@@ -75,9 +97,7 @@ object FragmentChromeFactory {
                     if (param.throwable != null) return
                     val owner = param.thisObject ?: return
                     val root = param.result as? ViewGroup ?: return
-                    roots[owner]?.takeIf { it !== root }?.let { destroy(owner) }
-                    roots[owner] = root
-                    root.post { runCatching { bind(owner, root) }.onFailure { fail(owner, it, root) } }
+                    runCatching { prepare(owner, root) }.onFailure { fail(owner, it, root) }
                 }
             })
             hook(FragmentChromeContract.method(contract.content, "onViewCreated", View::class.java, Bundle::class.java),
@@ -87,8 +107,7 @@ object FragmentChromeFactory {
                         val owner = param.thisObject ?: return
                         if (!contract.content.isInstance(owner)) return
                         val root = param.args[0] as? ViewGroup ?: return
-                        roots[owner] = root
-                        root.post { runCatching { bind(owner, root) }.onFailure { fail(owner, it, root) } }
+                        runCatching { prepare(owner, root) }.onFailure { fail(owner, it, root) }
                     }
                 })
             hook(FragmentChromeContract.method(contract.content, "onDestroyView"), object : ModernMethodHook() {
@@ -184,8 +203,8 @@ object FragmentChromeFactory {
                 }
             })
             scope.onClose {
-                bindings.keys.toList().forEach(::destroy)
-                callbacks.clear(); roots.clear(); playerProgress.clear()
+                bindings.owners.toList().forEach(::destroy)
+                watched.clear(); callbacks.clear(); playerProgress.clear()
             }
             scope.activate()
             return HostSubscription { scope.close() }

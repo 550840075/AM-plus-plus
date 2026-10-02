@@ -40,6 +40,8 @@ interface FragmentPlayerSurfacePort : PlayerSurfacePort, AutoCloseable {
 }
 
 interface FragmentPlayerSurfaceObserver {
+    /** Announced before the new view's first draw, including a surviving view's reattachment. */
+    fun onPreparing(root: ViewGroup) = Unit
     fun onCreated(surface: FragmentPlayerSurfacePort)
     fun onDestroyed(identity: Any)
     /** Observation only: native dispatch, every mini control, and player drag continue unchanged. */

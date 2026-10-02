@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import androidx.annotation.RequiresApi
 import dev.amenhancer.module.ModuleConstants
 import dev.amenhancer.module.config.TargetConfigClient
@@ -19,6 +20,7 @@ import java.util.IdentityHashMap
 @RequiresApi(33)
 internal object FragmentGlassRuntime {
     private val sessions = IdentityHashMap<Any, FragmentGlassSessionLifecycle>()
+    private val firstDraws = IdentityHashMap<Any, FragmentGlassFirstDraw>()
     private var installation: HostSubscription? = null
     private var registered = false
     private var failedInstall = false
@@ -30,12 +32,19 @@ internal object FragmentGlassRuntime {
         if (!FragmentChromeFactory.supports(build) || installation != null || failedInstall) return
         try {
             installation = FragmentChromeFactory.install(activity.classLoader, build, object : FragmentPlayerSurfaceObserver {
+                override fun onPreparing(root: ViewGroup) {
+                    if (config.settings().phoneLiquidGlassEnabled) firstDraws.getOrPut(root) {
+                        FragmentGlassFirstDraw(root) { config.settings().phoneLiquidGlassEnabled }
+                    }
+                }
                 override fun onCreated(surface: FragmentPlayerSurfacePort) {
                     val identity = surface.viewSessionIdentity
                     sessions.remove(identity)?.close()
                     if (!config.settings().phoneLiquidGlassEnabled) return
                     try {
+                        val pendingDraw = firstDraws[identity]
                         val ready = {
+                            if (firstDraws[identity] === pendingDraw) firstDraws.remove(identity)?.close()
                             config.reportHealth(FeatureHealth(ModuleConstants.FEATURE_PHONE_LIQUID_GLASS,
                                 FeatureState.ACTIVE, "Fragment 玻璃已渲染：原生布局、导航透镜及完整迷你播放器", build.displayName))
                         }
@@ -45,11 +54,19 @@ internal object FragmentGlassRuntime {
                         else FragmentPhoneGlassSession(surface, config, ready, failure)
                     } catch (error: Throwable) { onFailure(identity, error) }
                 }
-                override fun onDestroyed(identity: Any) { sessions.remove(identity)?.close() }
+                override fun onDestroyed(identity: Any) {
+                    firstDraws.remove(identity)?.close()
+                    sessions.remove(identity)?.close()
+                }
                 override fun onMiniTouch(identity: Any, event: MotionEvent) { sessions[identity]?.observeMiniTouch(event) }
                 override fun onFailure(identity: Any?, error: Throwable) {
-                    if (identity != null) sessions.remove(identity)?.close()
-                    else { sessions.values.forEach { it.close() }; sessions.clear() }
+                    if (identity != null) {
+                        firstDraws.remove(identity)?.close()
+                        sessions.remove(identity)?.close()
+                    } else {
+                        firstDraws.values.forEach { it.close() }; firstDraws.clear()
+                        sessions.values.forEach { it.close() }; sessions.clear()
+                    }
                     ModernXposedRuntime.log("Fragment glass restored native chrome", error)
                     config.reportHealth(FeatureHealth(ModuleConstants.FEATURE_PHONE_LIQUID_GLASS,
                         FeatureState.FAILED, "Fragment 玻璃失败，已恢复原生界面：${error.javaClass.simpleName}", build.displayName))
@@ -65,6 +82,9 @@ internal object FragmentGlassRuntime {
                     override fun onActivityStopped(activity: Activity) = Unit
                     override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) = Unit
                     override fun onActivityDestroyed(activity: Activity) {
+                        firstDraws.keys.toList().filter { identity ->
+                            (identity as? View)?.let { this@FragmentGlassRuntime.activity(it.context) } === activity
+                        }.forEach { firstDraws.remove(it)?.close() }
                         sessions.entries.filter { (_, session) -> session.activity === activity }
                             .map { it.key }.forEach { sessions.remove(it)?.close() }
                     }
