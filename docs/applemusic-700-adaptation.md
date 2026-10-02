@@ -1,6 +1,6 @@
 # Apple Music 7.0.0-beta/1606 适配与用户验收
 
-日期：2026-10-02。实现分支：`codex/applemusic-700-adaptation`；代码基线：`main/d3637ed`。本次只为 `com.apple.android.music / 7.0.0-beta / 1606` 启用接入，供用户测试；未知 beta、正式版和错误 tuple 不放行。**首包曾启动崩溃，已修复并通过平板冷启动检查；最新玻璃修正通过自动验证，手势与渐隐仍待用户验收。** 此记录不代表公开发布。
+日期：2026-10-02。实现分支：`codex/applemusic-700-adaptation`；代码基线：`main/d3637ed`。本次只为 `com.apple.android.music / 7.0.0-beta / 1606` 启用接入，供用户测试；未知 beta、正式版和错误 tuple 不放行。**首包曾启动崩溃，已修复并通过平板冷启动检查；完整参考平板迁移已由用户确认通过，广泛设备矩阵仍待验收。** 此记录不代表公开发布。
 
 实现提交：`25b5cae`（profile/歌词契约）、`461a570`（settings2/蜂窝）、`fb5e4ad`（双栏/元数据）、`5f86368`（初版 Fragment 玻璃）、`833904f`（启动崩溃修复）、`2b5c6de`（参考平板玻璃与拖动/切页/渐隐修正）。原始包、反编译资料、日志、签名秘密和生成 APK 均未提交 Git。
 
@@ -12,9 +12,9 @@
 | 用户提供 APKS | `Apple Music_7.0.0-beta_com.apple.android.music.apks`，含 base、arm64、xxhdpi |
 | APKS SHA-256 | `e527fb763525ac24414aed48f956f9b6ffaaff03ade27e6fe5e767f1e9adf4f8` |
 | base SHA-256 | `3d09687ed752e48e73f2c72524e18cffff69c66b523096c2e97c8f9135980603` |
-| 模块 APK | `.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-tablet-glass-v3.apk` |
-| 模块版本与大小 | 沿用 `dev.amenhancer.module / 1.6.2 / 112`；9,683,868 bytes |
-| 模块 SHA-256 | `550b19c8b180161d98f7102304e85d756d1e62bf4702185aa098890b8e0527bd` |
+| 模块 APK | `.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-reference-full-v4.apk` |
+| 模块版本与大小 | 沿用 `dev.amenhancer.module / 1.6.2 / 112`；9,716,716 bytes |
+| 模块 SHA-256 | `62a4fb6bf00693bfb17cb381fea2bceaefaeabbb20d2555a8e59eb9330d60672` |
 | 签名 | APK v2 验证通过，当前 AM Plus Plus Release / RSA4096 |
 | 证书 SHA-256 | `6ed7800187c3513562334319723498fd01772396b9848d4aeba50622910be0d4` |
 | 打包范围 | 五个精确 profile 和 index；HookEntry、scope、许可资产存在；历史 research 夹具未打包 |
@@ -61,11 +61,11 @@
 
 | 检查 | 结果 |
 |---|---|
-| 全模块 `test` | **919 项，0 失败、0 错误、0 跳过**；core267、app239、glass22、host-api22、host-applemusic367、hook-runtime2。Gradle 未变化任务使用已有结果 |
+| 全模块 `test` | **939 项，0 失败、0 错误、0 跳过**；core278、app240、glass22、host-api30、host-applemusic367、hook-runtime2。Gradle 未变化任务使用已有结果 |
 | 新行为覆盖 | 精确 tuple、完整/错误描述符、同形旧方法拒绝、当前 item 与次级状态分离、w2/b2 去重与过期重应用、设置列表去重/失败/销毁、cellular 条件、双栏事务恢复/歌词 fade、封面属性所有权、导航测量/命中/取消、mini motion/属性恢复、目录查询/生命周期与优先级 |
 | Debug Lint | app、glass、host-applemusic 通过；保留项目既有 warnings，不扩大 baseline。模块玻璃 island 的 requestLayout 有局部注释说明的 MissingSuperCall suppression，避免动画传播至宿主布局 |
 | Release | app `lintVitalRelease` 和 `assembleRelease` 通过；v2 签名与打包内容核验通过 |
-| 1606 宿主静态 | **230 项，0 失败**，二进制 Manifest、全部 split DEX、方法、原生字段类型及布局；包含双栏生命周期/事务、lyrics listener/metrics、MarginLayoutParams、抽屉、库标题、d(F) 和 BlurView.draw 契约 |
+| 1606 宿主静态 | **237 项，0 失败**，二进制 Manifest、全部 split DEX、方法、原生字段类型及布局；包含双栏生命周期/事务、lyrics listener/metrics、MarginLayoutParams、抽屉、库标题、d(F) 和 BlurView.draw 契约 |
 | 1599 宿主静态 | 51 项，0 失败，包含玻璃入口 |
 | Profile / 架构 / 玻璃参考 | 五个 profile、314 个 HLE 目标；旧冻结映射与候选顺序不变；模块边界通过；32 个上游文件和 2 个已声明补丁 hash 通过 |
 
@@ -107,3 +107,5 @@ rtk proxy python scripts/verify-host-profile.py PACKAGE --profile PATH_TO_PROFIL
 另有运行时未完成项：已采集的 1606 能力日志中，元数据修正的 `LOCAL_MEDIA_PLAYER_INDEX_CHANGED` 必需 bootstrap 目标仍未解析，显示 DEGRADED。65 个展示目标的静态验证不能代替这条启动链路的运行时成功；后续需独立修复和验收。本次 v3 交付聚焦用户反馈的平板玻璃，不能据此声称完整功能矩阵已通过。
 
 反馈时请附设备/API、屏幕方向与宽度、开启的功能、歌曲ID、操作步骤，以及设置中的能力报告和对应录屏或日志。首轮优先完成1–4，再测试歌词、字体和元数据。真机完成后再更新 `evidence.runtimeVerified` 与本表；本轮保持 false/待验证。
+
+最新平板实现及逐项迁移、实机和用户验收记录见 [完整参考迁移记录](applemusic-700-tablet-reference-port.md)。迁移提交 c619a7a；最终 v4 已安装并由用户确认通过，此记录覆盖此前 v3 与临时 v4 的平板交互状态。
