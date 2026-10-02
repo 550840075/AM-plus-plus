@@ -18,7 +18,7 @@ import java.util.IdentityHashMap
 /** Registry keys are Fragment view identities; two recreated roots can never share a glass session. */
 @RequiresApi(33)
 internal object FragmentGlassRuntime {
-    private val sessions = IdentityHashMap<Any, FragmentGlassSession>()
+    private val sessions = IdentityHashMap<Any, FragmentGlassSessionLifecycle>()
     private var installation: HostSubscription? = null
     private var registered = false
     private var failedInstall = false
@@ -35,10 +35,14 @@ internal object FragmentGlassRuntime {
                     sessions.remove(identity)?.close()
                     if (!config.settings().phoneLiquidGlassEnabled) return
                     try {
-                        sessions[identity] = FragmentGlassSession(surface, config, {
+                        val ready = {
                             config.reportHealth(FeatureHealth(ModuleConstants.FEATURE_PHONE_LIQUID_GLASS,
                                 FeatureState.ACTIVE, "Fragment 玻璃已渲染：原生布局、导航透镜及完整迷你播放器", build.displayName))
-                        }, { error -> onFailure(identity, error) })
+                        }
+                        val failure: (Throwable) -> Unit = { error -> onFailure(identity, error) }
+                        sessions[identity] = if (surface.tabletChrome != null)
+                            FragmentTabletGlassSession(surface, config, ready, failure)
+                        else FragmentGlassSession(surface, config, ready, failure)
                     } catch (error: Throwable) { onFailure(identity, error) }
                 }
                 override fun onDestroyed(identity: Any) { sessions.remove(identity)?.close() }

@@ -34,6 +34,9 @@ internal class FragmentChromeContract(loader: ClassLoader, val names: JSONObject
     val libraryTitle = method(libraryModel.returnType, "getLibraryTabName")
     val drawerOf = method(loader.loadClass(names.getString("activityClass")), names.getString("drawerOf"))
     val drawerOpen = method(drawerOf.returnType, names.getString("drawerOpen"))
+    val nativeMenuListener = field(content, names.getString("menuListenerField"), loader.loadClass(names.getString("menuListenerClass")))
+    val selectMenuItem = method(nativeMenuListener.type, names.getString("menuSelectMethod"), android.view.MenuItem::class.java)
+    val activityTouch = android.app.Activity::class.java.getDeclaredMethod("dispatchTouchEvent", android.view.MotionEvent::class.java)
     val resources = names.getJSONObject("resources")
     val blurDraw = method(loader.loadClass(names.getString("blurClass")), "draw", android.graphics.Canvas::class.java)
 

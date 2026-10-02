@@ -44,8 +44,8 @@ internal class FragmentGlassSession(
     private val config: TargetConfigClient,
     private val ready: () -> Unit,
     private val failure: (Throwable) -> Unit,
-) : AutoCloseable {
-    val activity = surface.activity
+) : FragmentGlassSessionLifecycle {
+    override val activity = surface.activity
     private val initial = surface.snapshot()
     private val root = initial.contentRoot
     private val moduleContext = moduleContext(activity)
@@ -281,7 +281,7 @@ internal class FragmentGlassSession(
         if (p > .01f || !mini.isShown) cancelPress()
     }
 
-    fun observeMiniTouch(event: MotionEvent) {
+    override fun observeMiniTouch(event: MotionEvent) {
         if (closed || !miniDrawn || state.expansion > .01f) return
         val glass = miniGlass ?: return
         glass.getLocationOnScreen(position)
@@ -307,7 +307,7 @@ internal class FragmentGlassSession(
         }
     }
 
-    fun foreground(active: Boolean) {
+    override fun foreground(active: Boolean) {
         foreground = active
         navGlass.foreground(active); miniGlass?.foreground(active)
         if (!active) { cancelPress(); backdrop.setCaptureEnabled(false) }

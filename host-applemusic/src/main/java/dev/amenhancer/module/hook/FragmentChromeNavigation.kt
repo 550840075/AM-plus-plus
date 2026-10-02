@@ -63,8 +63,8 @@ internal class FragmentChromeNavigation(
                 val kind = contract.modelKind.get(model)!!
                 val kindName = (kind as Enum<*>).name
                 val id = contract.kindId.invoke(kind) as Int
-                val menuItem = drawerMenu?.findItem(id)
-                if (menuItem?.isVisible == false) return@mapNotNull null
+                val menuItem = drawerMenu?.findItem(id) ?: return@mapNotNull null
+                if (!menuItem.isVisible) return@mapNotNull null
                 val iconId = contract.kindIcon.invoke(kind) as Int
                 val label = if (kindName == "LIBRARY") libraryTitleValue?.invoke(libraryTitleLive) as? String else null
                 NavigationItem(id, label ?: contract.kindLabel.invoke(kind) as String,
@@ -73,7 +73,7 @@ internal class FragmentChromeNavigation(
             }
             selectedId = selected.invoke(vm)?.let { contract.kindId.invoke(it) as Int }
             // The callback may be captured for an equivalent model object from the same live menu.
-            ready = nativeModels.isNotEmpty() && nativeModels.all { callbackFor(it) != null }
+            ready = items.size > 1 && contract.nativeMenuListener.get(owner) != null
         }
         val nextKey = items.flatMap { listOf(it.id, it.label, it.enabled, it.icon?.constantState) } +
             listOf(selectedId, ready, view.resources.configuration.hashCode())
@@ -89,7 +89,9 @@ internal class FragmentChromeNavigation(
         val before = snapshot()
         if (before.tabs.none { it.id == id && it.enabled }) return before
         if (selectMethod != null) selectMethod.invoke(view, id)
-        else models[id]?.let { model -> callbackFor(model)?.let { contract.invokeCallback.invoke(it, model) } }
+        else drawerMenu?.findItem(id)?.let { item ->
+            contract.nativeMenuListener.get(owner)?.let { contract.selectMenuItem.invoke(it, item) }
+        }
         return snapshot().also { publish(it) }
     }
 

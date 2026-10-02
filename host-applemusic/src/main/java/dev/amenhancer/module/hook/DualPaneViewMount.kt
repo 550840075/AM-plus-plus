@@ -114,6 +114,20 @@ internal object ConstraintLayoutPane {
             .firstOrNull()
     }
 
+    /** Reference1606: fix the native cover's constraint size before aligning its sheet frame. */
+    fun configureArtworkContainer(artwork: View, sizePx: Int): Boolean {
+        val params = constraintMarginParams(artwork, ARTWORK_CONTAINER)
+        if (params.width == sizePx && params.height == sizePx && params.topMargin == 0 && params.bottomMargin == 0 &&
+            constraintField(params.javaClass, "topToTop")?.getInt(params) == PARENT_ID &&
+            constraintField(params.javaClass, "topToBottom")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "dimensionRatio")?.get(params) == null) return false
+        params.width = sizePx; params.height = sizePx; params.topMargin = 0; params.bottomMargin = 0
+        params.setObject("dimensionRatio", null)
+        params.setInt("topToTop", PARENT_ID); params.setInt("topToBottom", -1)
+        artwork.layoutParams = params
+        return true
+    }
+
     /**
      * Mirrors the modified layout-land/bottom_navigation.xml by converting the
      * stock flat resource tree into full-width tablet chrome. Apple Music's

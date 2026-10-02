@@ -1867,7 +1867,8 @@
       ],
       "Lcom/apple/android/music/player/fragment/PlayerMainFragment$i;": [
         "b(Landroid/view/View;F)V",
-        "d(F)V"
+        "d(F)V",
+        "e()V"
       ],
       "Lcom/apple/android/music/playback/connectivity/FuseConnectivityChecker;": [
         "isCellularAvailable()Z"
@@ -2077,6 +2078,12 @@
       ],
       "Lcom/apple/android/music/common/MainActivityViewModel;": [
         "getLibraryTabName()Landroidx/lifecycle/MutableLiveData;"
+      ],
+      "LJ4/s1;": [
+        "a(Landroid/view/MenuItem;)V"
+      ],
+      "Lcom/apple/android/music/player/G0;": [
+        "P(Landroid/view/View;IZ)V"
       ]
     },
     "fields": {
@@ -2150,7 +2157,10 @@
       },
       "Lcom/apple/android/music/player/fragment/PlayerMainFragment$i;": {
         "h": "Lcom/apple/android/music/player/fragment/PlayerMainFragment;",
-        "f": "F"
+        "f": "F",
+        "a": "Landroid/view/View;",
+        "b": "F",
+        "c": "F"
       },
       "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment;": {
         "n0": "Lq8/Y4;",
@@ -2202,6 +2212,9 @@
       },
       "Lq8/a5;": {
         "h0": "Landroid/widget/FrameLayout;"
+      },
+      "Lcom/apple/android/music/common/fragment/MusicContentFragment;": {
+        "M": "LJ4/s1;"
       }
     }
   },
@@ -2336,6 +2349,9 @@
     "playerOf": "p1",
     "accentColor": "color_primary",
     "blurClass": "eightbitlab.com.blurview.BlurView",
+    "menuListenerClass": "J4.s1",
+    "menuListenerField": "M",
+    "menuSelectMethod": "a",
     "resources": {
       "topNavigation": "top_nav_tabs",
       "bottomNavigation": "bottom_nav_view",

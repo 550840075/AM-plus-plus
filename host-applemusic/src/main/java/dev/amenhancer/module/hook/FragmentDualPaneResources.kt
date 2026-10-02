@@ -19,13 +19,8 @@ internal object FragmentDualPaneResources {
 
     fun install() {
         if (!installed.compareAndSet(false, true)) return
-        LayoutInflationRegistry.register("fragment_player_main") { root ->
-            if (!isFragmentRoot(root)) return@register
-            val build = targetBuild(root.context)
-            if (build.packageName != "com.apple.android.music" || build.versionName != "7.0.0-beta" || build.versionCode != 1606L) return@register
-            runCatching { FragmentDualPaneViewMount.install(root as? ViewGroup ?: return@register) }
-                .onFailure { ModernXposedRuntime.log("1606 synchronous player host inflation failed", it) }
-        }
+        // Reference session prepares stable containers in onCreateView, before child view restore.
+        // Do not also reparent with the former wrapper during native DataBinding inflation.
         // Native flexbox masks cache line heights during binding. Set both lyric layers before
         // that first measurement, rather than changing text metrics only at RecyclerView attach.
         listOf("lyrics_line", "lyrics_word_karaoke").forEach { layout ->

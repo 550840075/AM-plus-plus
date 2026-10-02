@@ -58,6 +58,19 @@ internal class FragmentSurfaceBinding(
         override fun onViewAttachedToWindow(v: View) = Unit
         override fun onViewDetachedFromWindow(v: View) = close()
     }
+    override val tabletChrome: FragmentTabletChromeBinding? by lazy {
+        if (placement != NavigationPlacement.TOP) null else FragmentTabletChromeBinding(root, { region ->
+            when (region) {
+                TabletChromeRegion.NAVIGATION -> nav
+                TabletChromeRegion.NAVIGATION_MATERIAL -> navBlur
+                TabletChromeRegion.MINI -> mini
+                TabletChromeRegion.MINI_MATERIAL -> miniBlur
+                TabletChromeRegion.BACKDROP -> source
+                TabletChromeRegion.SHEET -> sheet
+                TabletChromeRegion.PLAYER -> materialParent
+            }
+        }, ::find, { FragmentTabletDualPaneCoordinator.coverReady(materialParent) })
+    }
 
     init {
         check(root !== sheet && root !== source) { "Glass requires a content-root sibling island" }
@@ -110,7 +123,8 @@ internal class FragmentSurfaceBinding(
         return current === player
     }
     fun ownsSheet(view: View): Boolean = sheet === view
-    fun replacesBlur(view: View): Boolean = !closed && ((navReady && view === navBlur) || (miniReady && view === miniBlur))
+    fun replacesBlur(view: View): Boolean = !closed && (tabletChrome?.replacesBlur(view) == true ||
+        (navReady && view === navBlur) || (miniReady && view === miniBlur))
     fun slide(value: Float) {
         if (!progress.slide(value) || closed) return
         // Like the reference branch: drive material opacity on every native callback, not
@@ -123,6 +137,7 @@ internal class FragmentSurfaceBinding(
     /** Called before View.setAlpha: remember even host writes equal to our hidden value. */
     fun nativeAlphaWrite(view: View, alpha: Float): Float? {
         if (closed || writing) return null
+        tabletChrome?.alphaWrite(view, alpha)?.let { return it }
         val lease = alphas[view] ?: return null
         lease.native = alpha
         return if (lease.factor != 1f) lease.own(alpha * lease.factor) else null
@@ -202,6 +217,7 @@ internal class FragmentSurfaceBinding(
         root.removeOnAttachStateChangeListener(detach)
         observers.clear()
         navigation.close()
+        tabletChrome?.restore()
         writing = true
         try {
             alphas.values.forEach { it.hide(false) }

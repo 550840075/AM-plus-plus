@@ -137,7 +137,7 @@ object FragmentChromeFactory {
                         val view = param.thisObject as? View ?: return
                         // Root dispatch observes one event before native child controls consume it.
                         bindings.values.forEach { binding ->
-                            if (binding.isMiniTouchPanel(view)) {
+                            if (binding.tabletChrome == null && binding.isMiniTouchPanel(view)) {
                                 runCatching { observer.onMiniTouch(binding.viewSessionIdentity, param.args[0] as MotionEvent) }
                                     .onFailure { fail(null, it) }
                             }
@@ -150,6 +150,15 @@ object FragmentChromeFactory {
                     val original = param.args[0] as Float
                     bindings.values.firstNotNullOfOrNull { it.nativeAlphaWrite(view, original) }
                         ?.let { param.args[0] = it }
+                }
+            })
+            hook(contract.activityTouch, object : ModernMethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    val event = param.args[0] as MotionEvent
+                    bindings.values.toList().forEach { binding ->
+                        if (binding.tabletChrome != null && binding.activity === param.thisObject)
+                            runCatching { observer.onMiniTouch(binding.viewSessionIdentity, event) }.onFailure { fail(null, it) }
+                    }
                 }
             })
             hook(contract.blurDraw, object : ModernMethodHook() {
