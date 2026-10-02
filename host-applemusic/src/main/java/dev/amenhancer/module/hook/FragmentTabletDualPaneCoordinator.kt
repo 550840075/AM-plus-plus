@@ -33,7 +33,9 @@ internal object FragmentTabletDualPaneCoordinator {
         registration.onClose { sessions.values.toList().forEach { it.destroy() }; sessions.clear(); roots.clear(); artworkOwners.clear(); failed.clear(); progressValues.clear() }
         val lyricsClass = loader.loadClass("com.apple.android.music.player.fragment.PlayerLyricsViewFragment")
         val build = TargetBuild("com.apple.android.music", "7.0.0-beta", 1606L)
-        val visual = BetaLyricsPaneRuntime(lyricsClass, checkNotNull(LyricsLayoutFieldProfiles.resolve(lyricsClass, build)))
+        val profile = checkNotNull(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(build.packageName, build.versionName, build.versionCode))
+        val karaoke = FragmentKaraokeWidthContract(lyricsClass, profile.document.getJSONObject("fragmentKaraokeWidth"))
+        val visual = BetaLyricsPaneRuntime(lyricsClass, checkNotNull(LyricsLayoutFieldProfiles.resolve(lyricsClass, build)), karaoke)
         visual.validate(); visual.install(registration)
         installArtworkHooks(loader)
         val controller = loader.loadClass("com.apple.android.music.player.fragment.PlayerMainFragment")

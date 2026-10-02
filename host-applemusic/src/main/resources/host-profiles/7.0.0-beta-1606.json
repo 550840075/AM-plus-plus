@@ -1851,7 +1851,10 @@
         "onMediaMetadataChanged(Lz3/w;)V"
       ],
       "Lcom/apple/android/music/player/A;": [
-        "V(Lcom/apple/android/music/player/A$a;IIIZ)V"
+        "V(Lcom/apple/android/music/player/A$a;IIIZ)V",
+        "k(Landroidx/recyclerview/widget/RecyclerView$D;I)V",
+        "m(Landroid/view/ViewGroup;I)Landroidx/recyclerview/widget/RecyclerView$D;",
+        "n0(Landroid/content/res/Resources;I)F"
       ],
       "Lcom/apple/android/music/utils/L0$a;": [
         "a(Ljava/lang/CharSequence;Ljava/util/Set;)Z"
@@ -2238,7 +2241,8 @@
       "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment;": {
         "n0": "Lq8/Y4;",
         "E0": "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment$x;",
-        "F0": "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment$x;"
+        "F0": "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment$x;",
+        "r0": "Lcom/apple/android/music/player/A;"
       },
       "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment$x;": {
         "a": "I",
@@ -2291,6 +2295,18 @@
       },
       "Lcom/apple/android/music/common/fragment/MusicContentFragment;": {
         "M": "LJ4/s1;"
+      },
+      "Lcom/apple/android/music/player/A;": {
+        "S": "I"
+      },
+      "Lcom/apple/android/music/player/n1$b;": {
+        "u": "Landroidx/databinding/ViewDataBinding;"
+      },
+      "Landroidx/recyclerview/widget/RecyclerView$D;": {
+        "a": "Landroid/view/View;"
+      },
+      "Lq8/p9;": {
+        "a0": "Lcom/apple/android/music/common/views/FullWidthAlphaGradientFlexboxLayout;"
       }
     }
   },
@@ -2545,5 +2561,18 @@
         "pagerType": "androidx.viewpager2.widget.ViewPager2"
       }
     }
+  },
+  "fragmentKaraokeWidth": {
+    "adapterClass": "com.apple.android.music.player.A",
+    "adapterField": "r0",
+    "widthField": "S",
+    "holderClass": "androidx.recyclerview.widget.RecyclerView$D",
+    "bindMethod": "k",
+    "holderBindingClass": "com.apple.android.music.player.n1$b",
+    "bindingField": "u",
+    "itemField": "a",
+    "bindingClass": "q8.p9",
+    "flexboxField": "a0",
+    "flexboxClass": "com.apple.android.music.common.views.FullWidthAlphaGradientFlexboxLayout"
   }
 }

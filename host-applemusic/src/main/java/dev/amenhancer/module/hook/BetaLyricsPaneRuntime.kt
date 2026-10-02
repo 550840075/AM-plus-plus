@@ -12,7 +12,8 @@ import java.util.WeakHashMap
 import kotlin.math.abs
 
 /** Scoped to the independent right fragment. Phone/fullscreen lyrics keep their native controls. */
-internal class BetaLyricsPaneRuntime(private val lyricsClass: Class<*>, private val fields: LyricsLayoutFieldProfile) {
+internal class BetaLyricsPaneRuntime(private val lyricsClass: Class<*>, private val fields: LyricsLayoutFieldProfile,
+    private val karaoke: FragmentKaraokeWidthContract) {
     private val sessions = WeakHashMap<Any, Session>()
     private val create = lyricsClass.getDeclaredMethod("onCreateView", LayoutInflater::class.java, ViewGroup::class.java, Bundle::class.java)
     private val resume = lyricsClass.getDeclaredMethod("onResume")
@@ -52,7 +53,15 @@ internal class BetaLyricsPaneRuntime(private val lyricsClass: Class<*>, private 
         })
         hook(resume, object : ModernMethodHook() {
             override fun afterHookedMethod(param: MethodHookParam) {
-                param.thisObject?.let { fragment -> guarded { sessions[fragment]?.refresh() } }
+                param.thisObject?.let { fragment -> guarded { sessions[fragment]?.schedule() } }
+            }
+        })
+        hook(karaoke.bind, object : ModernMethodHook() {
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                val adapter = param.thisObject ?: return
+                if (karaoke.initialized(adapter)) return
+                val row = param.args.firstOrNull() ?: return
+                sessions.values.firstOrNull { it.owns(adapter) }?.let { session -> guarded { session.prepareRowWidth(adapter, row) } }
             }
         })
         hook(metrics, object : ModernMethodHook() {
@@ -127,7 +136,7 @@ internal class BetaLyricsPaneRuntime(private val lyricsClass: Class<*>, private 
             schedule()
         }
 
-        private fun schedule() {
+        fun schedule() {
             if (closed || posted) return
             posted = true
             if (!container.post(update)) posted = false
@@ -139,6 +148,14 @@ internal class BetaLyricsPaneRuntime(private val lyricsClass: Class<*>, private 
             applyRows()
             fragmentRef.get()?.let { metrics.isAccessible = true; metrics.invoke(it) }
             RightLyricsPaneLayout.reapplyVerticalGradientEdges(gradients)
+        }
+
+        fun owns(adapter: Any): Boolean = !closed && fragmentRef.get()?.let { karaoke.owns(it, adapter) } == true
+        fun prepareRowWidth(adapter: Any, row: Any) {
+            if (closed || !TabletModeQualifier.isEligible(recycler.context)) return
+            karaoke.initialize(adapter, row, recycler.width)?.let { width ->
+                ModernXposedRuntime.log("1606 right lyrics: initialized cached-row karaoke width=$width viewport=${recycler.width}")
+            }
         }
 
         fun correctMetrics() {
