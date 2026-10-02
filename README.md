@@ -150,7 +150,7 @@ Lunabeat 会缓存 manifest 和歌曲索引，只在远端 revision 变化时重
 
 ### 液态玻璃底栏
 
-打开“液态玻璃底栏”，强制停止并重新打开 Apple Music。生效范围是手机布局与开启“平板双栏播放器”的平板横屏（平板竖屏或双栏关闭时保持原生界面）；平板形态下底栏与迷你播放器并排在同一条底部胶囊行内（底栏在左、迷你在右、同高居中），整行约 2/3 屏宽居中、左右留白等长，展开播放器时右下小胶囊四边插值摊开为全屏。底栏使用 AndroidLiquidGlass 的 LiquidBottomTabs，迷你播放器使用 LiquidButton 材质和按压形变，播放控件仍是原生实现；页面背景通过共享硬件 RenderNode 采样。逐项依赖与维护流程见 [液态玻璃新版本适配](docs/liquid-glass-adaptation.md)。
+打开“液态玻璃底栏”，强制停止并重新打开 Apple Music。生效范围是手机布局与开启“平板双栏播放器”的平板横屏（平板竖屏或双栏关闭时保持原生界面）；平板形态下底栏与迷你播放器并排在同一条底部胶囊行内（底栏在左、迷你在右、同高居中），整行约 2/3 屏宽居中、左右留白等长，展开播放器时右下小胶囊四边插值摊开为全屏。底栏使用 AndroidLiquidGlass 的 LiquidBottomTabs，迷你播放器使用 LiquidButton 材质和按压形变，播放控件仍是原生实现；页面背景通过共享硬件 RenderNode 采样。宿主接入与维护流程见 [宿主适配手册](docs/host-adaptation-guide.md)。
 
 开启后可微调两个附加项（关闭液态玻璃时不显示、也不生效）：“底栏高度”（`0..48dp`，即底栏距屏幕底部的距离，同时调整内容底部留白与播放器 peek 高度）与“底栏背景模糊强度”（`0..24dp`，同时作用于底栏面板和迷你播放器）；两者均为重开 Apple Music 后生效。每项右上角有小恢复按钮，可单独一键回到默认值（`16dp` / `4dp`）。
 
@@ -188,13 +188,16 @@ app/build/outputs/apk/release/app-release.apk
 ## 项目结构
 
 ```text
-app/src/main/java/        模块入口、设置页、配置、歌词与各功能 Hook
+app/src/main/java/        模块入口、依赖装配、设置页、功能编排与 Android 存储
 app/src/main/resources/   libxposed 模块元数据
-app/src/test/             JVM 单元测试与结构回归测试
+core/                     纯配置/歌词业务、网络来源、缓存与布局策略
+host-api/                 语义宿主能力、事件、安装结果与订阅
+hook-runtime/             libxposed 包装、注册作用域与日志
+host-applemusic/           版本 profile、反射/DexKit 解析与原生宿主接入
 glass/                    AndroidLiquidGlass 渲染器（固定提交纳入）
 backdrop/                 上游 Backdrop 库
 docs/images/              演示图
-docs/                     适配手册与逐版本适配记录
+docs/                     当前维护文档、功能矩阵与验证记录
 scripts/                  可选的真机回归、录屏分析与 host profile 校验脚本
 ```
 
@@ -213,7 +216,7 @@ scripts/                  可选的真机回归、录屏分析与 host profile �
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。改动代码的 PR 请至少运行 `test`、`lintVitalRelease` 和 `assembleRelease`；涉及界面行为时，请在 Issue 或 PR 中附上设备型号、Android 版本、Apple Music 版本以及截图或录屏。适配 Apple Music 新版本前，请先读 [Apple Music 新版本适配手册](docs/apple-music-target-adaptation.md)。
+欢迎提交 Issue 和 Pull Request。改动代码的 PR 请至少运行 `test`、`lintVitalRelease` 和 `assembleRelease`；涉及界面行为时，请在 Issue 或 PR 中附上设备型号、Android 版本、Apple Music 版本以及截图或录屏。适配 Apple Music 新版本前，请先读 [宿主适配手册](docs/host-adaptation-guide.md)。完整文档入口见 [文档目录](docs/README.md)。
 
 ## 隐私与权限
 
