@@ -42,7 +42,7 @@ internal object FragmentGlassRuntime {
                         val failure: (Throwable) -> Unit = { error -> onFailure(identity, error) }
                         sessions[identity] = if (surface.tabletChrome != null)
                             FragmentTabletGlassSession(surface, config, ready, failure)
-                        else FragmentGlassSession(surface, config, ready, failure)
+                        else FragmentPhoneGlassSession(surface, config, ready, failure)
                     } catch (error: Throwable) { onFailure(identity, error) }
                 }
                 override fun onDestroyed(identity: Any) { sessions.remove(identity)?.close() }

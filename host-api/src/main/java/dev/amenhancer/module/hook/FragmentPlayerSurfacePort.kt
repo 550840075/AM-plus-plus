@@ -29,6 +29,7 @@ interface FragmentPlayerSurfacePort : PlayerSurfacePort, AutoCloseable {
     val activity: Activity
     val navigation: NavigationPort
     val tabletChrome: FragmentTabletChromePort? get() = null
+    val phoneChrome: FragmentPhoneChromePort? get() = null
     fun snapshot(): FragmentPlayerSurfaceSnapshot
     /** Suppression belongs to this view identity and requires a fully rendered replacement. */
     fun setNavigationGlassReady(ready: Boolean)

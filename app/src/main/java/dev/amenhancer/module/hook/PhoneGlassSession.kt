@@ -49,8 +49,9 @@ import kotlin.math.roundToInt
 
 @RequiresApi(33)
 internal open class PhoneGlassSession(
-    protected val activity: Activity,
+    val activity: Activity,
     protected val config: TargetConfigClient,
+    protected val hostBinding: ChromeHostBinding = AppleMusicHostFactory.bindChrome(activity),
     private val failure: (Throwable) -> Unit,
 ) : GlassSession, ViewTreeObserver.OnPreDrawListener {
     private val transformOwners = IdentityHashMap<View, MutableMap<String, dev.amenhancer.module.host.OwnedHostProperty<Float>>>()
@@ -118,7 +119,7 @@ internal open class PhoneGlassSession(
     protected val density get() = activity.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
     protected val bottomInset get() = activity.window.decorView.rootWindowInsets?.getInsets(WindowInsets.Type.navigationBars())?.bottom ?: 0
-    protected val miniVisible get() = miniRoot?.isShown == true
+    protected open val miniVisible get() = miniRoot?.isShown == true
     // AM++: user-adjustable glass lift/material, captured with the session so every
     // height consumer (frame, content padding, peek) agrees within a frame.
     protected var bottomGapDp = GlassPolicy.BOTTOM_DP
@@ -141,9 +142,8 @@ internal open class PhoneGlassSession(
 
     // Resource IDs are stable for this Activity's host APK. Keep values and Views live so
     // configuration changes and replaced page/player hierarchies still take effect.
-    protected val hostBinding = AppleMusicHostFactory.bindChrome(activity)
     protected fun resourceId(role: ChromeResource): Int = hostBinding.resourceId(role)
-    protected fun find(role: ChromeResource): View? = hostBinding.find(role)
+    protected open fun find(role: ChromeResource): View? = hostBinding.find(role)
     protected fun dimen(role: ChromeResource): Int = hostBinding.dimension(role)
 
     protected fun writeOwnedTransform(view: View, property: String, value: Float) {
@@ -188,6 +188,12 @@ internal open class PhoneGlassSession(
         if (view.visibility != View.GONE) view.visibility = View.GONE
     }
 
+    protected fun clearNativeBackground(view: View?) {
+        view ?: return
+        save(view)
+        if (view.background != null) view.background = null
+    }
+
     private fun allowGlassOverflow(view: View) {
         generateSequence(view as View?) { it.parent as? View }.takeWhile { it.layoutParams != null }.forEach {
             if (it is ViewGroup) {
@@ -212,6 +218,15 @@ internal open class PhoneGlassSession(
 
     /** Capsule exit driver; the phone host translates the frame from its own holder. */
     protected open fun driveNavFrameExit(progress: Float) = Unit
+
+    protected open val navigationScrimEnabled: Boolean = true
+
+    protected open fun miniMaterialParent(root: FrameLayout): FrameLayout =
+        find(ChromeResource.PLAYER_SHEET_CONTAINER) as? FrameLayout ?: root
+
+    protected open fun initialSlide(sheet: View, behavior: Any): Float = hostBinding.sheetSnapshot(behavior).let {
+        InitialGlassSlide.resolve(it.state, sheet.top, it.collapsedTop, it.expandedTop)
+    }
 
     /** Phone keeps its bottom fade inside the native tabs frame. */
     protected open fun attachNavigationScrim(frame: FrameLayout, scrim: GlassHostView) {
@@ -257,11 +272,13 @@ internal open class PhoneGlassSession(
             refreshMenu()
             // Bottom fade: blurred, washed-out strip under the tabs, matching the
             // reference apps' gradient bar. Added first so the tabs stay on top.
-            val scrim = GlassHostView(moduleContext(), bleedDp = 0).also { navScrim = it }
-            scrim.alpha = 0f
-            scrim.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-            scrim.content { HostConfiguration { BottomScrim(bg) } }
-            attachNavigationScrim(frame, scrim)
+            if (navigationScrimEnabled) {
+                val scrim = GlassHostView(moduleContext(), bleedDp = 0).also { navScrim = it }
+                scrim.alpha = 0f
+                scrim.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                scrim.content { HostConfiguration { BottomScrim(bg) } }
+                attachNavigationScrim(frame, scrim)
+            }
             val glass = GlassHostView(moduleContext()).also { navGlass = it }
             glass.alpha = 0f
             glass.content { HostConfiguration { GlassNavigation(tabs, selectedId, accent, foreground, bg, ::selectTab, panelBlur = navBlurDp.dp) } }
@@ -292,7 +309,7 @@ internal open class PhoneGlassSession(
             }
             // The native mini container disappears early in the opening animation.
             // Keep the material behind the whole sheet, independent of that container.
-            val surfaceParent = find(ChromeResource.PLAYER_SHEET_CONTAINER) as? FrameLayout ?: root
+            val surfaceParent = miniMaterialParent(root)
             playerSheet = surfaceParent
             surfaceParent.addView(glass, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(geometry.miniHeightDp), Gravity.TOP).apply {
                 val slot = capsuleMarginsPx(navFrame?.width ?: 0, mini = true)
@@ -428,8 +445,7 @@ internal open class PhoneGlassSession(
         if (!sheet.isLaidOut) return
         playerSheet = sheet
         val behavior = checkNotNull(playerBehavior)
-        val snapshot = hostBinding.sheetSnapshot(behavior)
-        slide = InitialGlassSlide.resolve(snapshot.state, sheet.top, snapshot.collapsedTop, snapshot.expandedTop)
+        slide = initialSlide(sheet, behavior)
         save(nav)
         save(frame)
         nav.alpha = 0f

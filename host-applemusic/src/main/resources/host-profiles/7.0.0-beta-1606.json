@@ -2084,6 +2084,10 @@
       ],
       "Lcom/apple/android/music/player/G0;": [
         "P(Landroid/view/View;IZ)V"
+      ],
+      "Lcom/google/android/material/bottomsheet/BottomSheetBehavior;": [
+        "F()I",
+        "L(IZ)V"
       ]
     },
     "fields": {
@@ -2193,7 +2197,10 @@
         "V": "Lcom/google/android/material/bottomsheet/BottomSheetBehavior;"
       },
       "Lcom/google/android/material/bottomsheet/BottomSheetBehavior;": {
-        "p0": "I"
+        "p0": "I",
+        "k0": "I",
+        "e": "I",
+        "f": "Z"
       },
       "Lcom/apple/android/music/common/views/AlphaGradientFrameLayout;": {
         "W": "Z",
@@ -2371,6 +2378,103 @@
     "activityClass": "com.apple.android.music.common.MainActivity",
     "drawerOf": "f1",
     "drawerOpen": "n",
-    "libraryViewModel": "q1"
+    "libraryViewModel": "q1",
+    "phone": {
+      "drawerQualifier": "useNavigationDrawer",
+      "resources": {
+        "BACKGROUND_LAYERS": {
+          "name": "background_layers",
+          "type": "id"
+        },
+        "COLOR_PRIMARY": {
+          "name": "color_primary",
+          "type": "color"
+        },
+        "MINI_PLAYER": {
+          "name": "mini_player",
+          "type": "id"
+        },
+        "MINI_PLAYER_CONTENT": {
+          "name": "mini_player_content",
+          "type": "id"
+        },
+        "MINI_PLAYER_NEXT_BTN": {
+          "name": "mini_player_next_btn",
+          "type": "id"
+        },
+        "MINI_PLAYER_PLAY_BTN": {
+          "name": "mini_player_play_btn",
+          "type": "id"
+        },
+        "MINI_PLAYER_TOUCH_PANEL": {
+          "name": "mini_player_touch_panel",
+          "type": "id"
+        },
+        "MINIPLAYER_HEIGHT": {
+          "name": "miniplayer_height",
+          "type": "dimen"
+        },
+        "MOTION_SWITCHER": {
+          "name": "motion_switcher",
+          "type": "id"
+        },
+        "NAVIGATION_TABS_HEIGHT": {
+          "name": "navigation_tabs_height",
+          "type": "dimen"
+        },
+        "PLAYER_FRAGMENTS_HOST": {
+          "name": "player_fragments_host",
+          "type": "id"
+        },
+        "PLAYER_ROOT": {
+          "name": "player_root",
+          "type": "id"
+        },
+        "PLAYER_SHEET_CONTAINER": {
+          "name": "player_sheet_container",
+          "type": "id"
+        },
+        "SHADOW_HEIGHT": {
+          "name": "shadow_height",
+          "type": "dimen"
+        },
+        "VIDEO_SURFACE_CONTAINER": {
+          "name": "video_surface_container",
+          "type": "id"
+        },
+        "BOTTOM_NAVIGATION": {
+          "name": "bottom_nav_view",
+          "type": "id"
+        },
+        "NAVIGATION_HOST_GROUP": {
+          "name": "tab_navigation_host",
+          "type": "id"
+        },
+        "NAVIGATION_TABS_DIVIDER": {
+          "name": "nav_bar_divider",
+          "type": "id"
+        }
+      },
+      "behavior": {
+        "collapsedTopField": "k0",
+        "peekField": "e",
+        "autoPeekField": "f",
+        "expandedTopMethod": "F",
+        "peekMethod": "L"
+      },
+      "presentation": {
+        "buttons": "buttons_container"
+      },
+      "views": {
+        "scrollTypes": [
+          "androidx.recyclerview.widget.RecyclerView",
+          "androidx.core.widget.NestedScrollView",
+          "android.widget.ScrollView",
+          "android.widget.ListView"
+        ],
+        "composeType": "androidx.compose.ui.platform.ComposeView",
+        "pagerType": "androidx.viewpager2.widget.ViewPager2"
+      }
+    }
   }
 }

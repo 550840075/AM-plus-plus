@@ -33,7 +33,7 @@ def check():
                 failures.append(f'{path.relative_to(ROOT)} imports native or network implementation')
             if re.search(r'Class\.forName|getDeclared(?:Field|Method)|\.declaredFields|ModernXposedRuntime\.callMethod',source):
                 failures.append(f'{path.relative_to(ROOT)} discovers native members')
-        if path.name.endswith('Feature.kt') or path.name in ('PhoneGlassSession.kt','TabletDualPaneGlassSession.kt') or path.name.startswith(('FragmentGlass','FragmentTabletGlass')):
+        if path.name.endswith('Feature.kt') or path.name in ('PhoneGlassSession.kt','TabletDualPaneGlassSession.kt') or path.name.startswith(('FragmentGlass','FragmentTabletGlass','FragmentPhoneGlass')):
             if re.search(r'getDeclared(?:Field|Method)|\.declaredFields|AppleMusicSymbols|TargetSymbolResolver|ModernXposedRuntime\.callMethod',source):
                 failures.append(f'{path.relative_to(ROOT)} bypasses semantic host API')
     if failures: raise SystemExit('\n'.join(failures))

@@ -68,6 +68,18 @@ internal object ConstraintLayoutPane {
     private const val PLAYER_ROOT = "player_root"
     private const val PLAYER_FRAGMENTS_HOST = "player_fragments_host"
     private const val PARENT_ID = 0
+
+    /** Reference 1606 phone bottom frame: copy native params and preserve the host class loader. */
+    fun newBottomNavigationFrameParams(template: ViewGroup.LayoutParams, height: Int): ViewGroup.MarginLayoutParams =
+        newLayoutParams(template, ViewGroup.LayoutParams.MATCH_PARENT, height).apply {
+            setMargins(0, 0, 0, 0)
+            marginStart = 0; marginEnd = 0
+            constrainFullWidth(this)
+            setInt("topToTop", -1)
+            setInt("topToBottom", -1)
+            setInt("bottomToTop", -1)
+            setInt("bottomToBottom", PARENT_ID)
+        }
     private object BottomNavigationLandscapeInstalled
     /**
      * Apple Music 6.5.0 repackages ConstraintLayout. Its LayoutParams keeps

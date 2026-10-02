@@ -71,6 +71,9 @@ internal class FragmentSurfaceBinding(
             }
         }, ::find, { FragmentTabletDualPaneCoordinator.coverReady(materialParent) })
     }
+    override val phoneChrome: FragmentPhoneChromeBinding? by lazy {
+        if (placement != NavigationPlacement.BOTTOM) null else FragmentPhoneChromeBinding(owner, activity, root, contract)
+    }
 
     init {
         check(root !== sheet && root !== source) { "Glass requires a content-root sibling island" }
@@ -124,6 +127,7 @@ internal class FragmentSurfaceBinding(
     }
     fun ownsSheet(view: View): Boolean = sheet === view
     fun replacesBlur(view: View): Boolean = !closed && (tabletChrome?.replacesBlur(view) == true ||
+        phoneChrome?.replacesBlur(view) == true ||
         (navReady && view === navBlur) || (miniReady && view === miniBlur))
     fun slide(value: Float) {
         if (!progress.slide(value) || closed) return
@@ -138,6 +142,7 @@ internal class FragmentSurfaceBinding(
     fun nativeAlphaWrite(view: View, alpha: Float): Float? {
         if (closed || writing) return null
         tabletChrome?.alphaWrite(view, alpha)?.let { return it }
+        phoneChrome?.alpha(view, alpha)?.let { return it }
         val lease = alphas[view] ?: return null
         lease.native = alpha
         return if (lease.factor != 1f) lease.own(alpha * lease.factor) else null
@@ -218,6 +223,7 @@ internal class FragmentSurfaceBinding(
         observers.clear()
         navigation.close()
         tabletChrome?.restore()
+        phoneChrome?.close()
         writing = true
         try {
             alphas.values.forEach { it.hide(false) }

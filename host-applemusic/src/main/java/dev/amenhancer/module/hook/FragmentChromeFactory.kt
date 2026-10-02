@@ -167,6 +167,22 @@ object FragmentChromeFactory {
                     if (bindings.values.any { it.replacesBlur(view) }) param.result = null
                 }
             })
+            hook(View::class.java.getDeclaredMethod("setPadding", java.lang.Integer.TYPE, java.lang.Integer.TYPE,
+                java.lang.Integer.TYPE, java.lang.Integer.TYPE), object : ModernMethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    val view = param.thisObject as? View ?: return
+                    bindings.values.firstNotNullOfOrNull { it.phoneChrome?.padding(view) }?.let { param.args[3] = it }
+                }
+            })
+            val phoneBehavior = contract.names.getJSONObject("phone").getJSONObject("behavior")
+            hook(FragmentChromeContract.method(contract.playerBehavior.type, phoneBehavior.getString("peekMethod"),
+                java.lang.Integer.TYPE, java.lang.Boolean.TYPE), object : ModernMethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    val owner = param.thisObject ?: return
+                    bindings.values.firstNotNullOfOrNull { it.phoneChrome?.peek(owner, param.args[0] as Int) }
+                        ?.let { param.args[0] = it }
+                }
+            })
             scope.onClose {
                 bindings.keys.toList().forEach(::destroy)
                 callbacks.clear(); roots.clear(); playerProgress.clear()
