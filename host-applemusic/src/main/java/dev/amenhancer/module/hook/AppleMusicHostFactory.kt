@@ -41,6 +41,10 @@ object AppleMusicHostFactory {
         autoLyricsRuntime: AutoLyricsRuntime? = null,
     ): TargetAdaptation {
         val build = targetBuild(application)
+        val profile = checkNotNull(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(build.packageName, build.versionName, build.versionCode))
+        check(profile.family == "legacy-activity") {
+            "Host family ${profile.family} needs its own verified native capability factory"
+        }
         val resolver = IndexedTargetSymbolResolver(
             build = build,
             source = ApkTargetClassSource(application, classLoader),
