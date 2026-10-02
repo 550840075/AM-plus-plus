@@ -36,4 +36,8 @@
 
 因此，本次自动验证可以支持继续开发和真机回归，尚不能作“旧版功能已全部真机保全”或“整个发布验收完成”的声明。
 
-最终 Release APK：`app/build/outputs/apk/release/app-release.apk`，9,557,932 bytes；SHA-256：`7d034cbac0467ba890e1748e1ec791d23daeade4d62eff67a3d8413b56f5c2f4`。Xposed 入口仍为 `dev.amenhancer.module.hook.HookEntry`，生产 index 顺序仍为 1599 → 1586 → 1583 → 1580 参考。
+首轮自动验收的 Release APK：9,557,932 bytes；SHA-256：`7d034cbac0467ba890e1748e1ec791d23daeade4d62eff67a3d8413b56f5c2f4`。Xposed 入口仍为 `dev.amenhancer.module.hook.HookEntry`，生产 index 顺序仍为 1599 → 1586 → 1583 → 1580 参考。
+
+## 用户试用反馈
+
+随后从 `c200ad9` 重编并交付 Release 1.6.2/112，v2 Release 签名校验通过；交付 APK SHA-256：`6b83510202ab482a78617d9a4aae6dcee91db5b23abfb785396c8dfac71ee5f4`。用户试用反馈“没啥问题”，并要求提交 PR。未记录具体设备、宿主版本及逐项覆盖结果；这条反馈作为实际试用记录，完整旧版本矩阵与五轮性能对比仍待验收。
