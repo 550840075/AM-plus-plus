@@ -37,6 +37,7 @@ internal object FragmentSettingsNativeFactory {
         val loader = context.classLoader
         runtime(loader, names).onOpen = onOpen
         return object : SettingsViewBridge {
+            override val supportsViewFallback = false
             override fun fragmentView(fragment: Any): ViewGroup? = runCatching {
                 fragment.javaClass.getMethod("getView").invoke(fragment) as? ViewGroup
             }.getOrNull()

@@ -24,10 +24,18 @@ internal class FragmentChromeContract(loader: ClassLoader, val names: JSONObject
         method(it, names.getString("slideMethod"), android.view.View::class.java, java.lang.Float.TYPE)
     }
     val slidePlayer = field(slide.declaringClass, names.getString("slidePlayerField"), player)
+    val progress = method(slide.declaringClass, "d", java.lang.Float.TYPE)
+    val playerBehavior = field(player, "c", loader.loadClass("com.google.android.material.bottomsheet.BottomSheetBehavior"))
+    val behaviorState = field(playerBehavior.type, "p0", java.lang.Integer.TYPE)
     val playerSlide = field(player, names.getString("playerSlideCallbackField"), slide.declaringClass)
     val slideProgress = field(slide.declaringClass, names.getString("slideProgressField"), java.lang.Float.TYPE)
     val playerOf = method(content, names.getString("playerOf"))
+    val libraryModel = method(content, names.getString("libraryViewModel"))
+    val libraryTitle = method(libraryModel.returnType, "getLibraryTabName")
+    val drawerOf = method(loader.loadClass(names.getString("activityClass")), names.getString("drawerOf"))
+    val drawerOpen = method(drawerOf.returnType, names.getString("drawerOpen"))
     val resources = names.getJSONObject("resources")
+    val blurDraw = method(loader.loadClass(names.getString("blurClass")), "draw", android.graphics.Canvas::class.java)
 
     companion object {
         fun method(type: Class<*>, name: String, vararg parameters: Class<*>): Method {

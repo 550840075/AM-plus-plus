@@ -28,6 +28,8 @@ object FragmentChromeFactory {
         val bindings = IdentityHashMap<Any, FragmentSurfaceBinding>()
         val roots = IdentityHashMap<Any, ViewGroup>()
         val callbacks = IdentityHashMap<Any, IdentityHashMap<Any, Any>>()
+        // Native slide events can precede the Fragment view's deferred glass mount.
+        val playerProgress = java.util.WeakHashMap<Any, Float>()
         val activityOf = FragmentChromeContract.method(contract.content, "getActivity")
         fun destroy(owner: Any) {
             roots.remove(owner)
@@ -59,6 +61,7 @@ object FragmentChromeFactory {
             bindings.remove(owner)?.let { observer.onDestroyed(it.viewSessionIdentity); it.close() }
             val binding = FragmentSurfaceBinding(owner, activityOf.invoke(owner) as Activity, root, contract,
                 callbacks.getOrPut(owner) { IdentityHashMap() }, { fail(owner, it, root) })
+            contract.playerOf.invoke(owner)?.let { player -> playerProgress[player]?.let(binding::slide) }
             bindings[owner] = binding
             observer.onCreated(binding)
         }
@@ -108,8 +111,22 @@ object FragmentChromeFactory {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     if (param.throwable != null) return
                     runCatching {
-                        val player = contract.slidePlayer.get(param.thisObject)
+                        val sheet = param.args[0] as View
                         val progress = param.args[1] as Float
+                        if (!progress.isFinite()) return
+                        contract.slidePlayer.get(param.thisObject)?.let { playerProgress[it] = progress.coerceIn(0f, 1f) }
+                        bindings.values.forEach { if (it.ownsSheet(sheet)) it.slide(progress) }
+                    }.onFailure { observer.onFailure(null, it) }
+                }
+            })
+            hook(contract.progress, object : ModernMethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    if (param.throwable != null) return
+                    runCatching {
+                        val player = contract.slidePlayer.get(param.thisObject)
+                        val progress = param.args[0] as Float
+                        if (!progress.isFinite()) return
+                        if (player != null) playerProgress[player] = progress.coerceIn(0f, 1f)
                         bindings.values.forEach { if (it.isPlayer(player)) it.slide(progress) }
                     }.onFailure { observer.onFailure(null, it) }
                 }
@@ -135,9 +152,15 @@ object FragmentChromeFactory {
                         ?.let { param.args[0] = it }
                 }
             })
+            hook(contract.blurDraw, object : ModernMethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    val view = param.thisObject as? View ?: return
+                    if (bindings.values.any { it.replacesBlur(view) }) param.result = null
+                }
+            })
             scope.onClose {
                 bindings.keys.toList().forEach(::destroy)
-                callbacks.clear(); roots.clear()
+                callbacks.clear(); roots.clear(); playerProgress.clear()
             }
             scope.activate()
             return HostSubscription { scope.close() }

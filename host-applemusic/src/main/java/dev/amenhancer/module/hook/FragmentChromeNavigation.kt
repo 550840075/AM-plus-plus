@@ -2,6 +2,7 @@ package dev.amenhancer.module.hook
 
 import android.view.Menu
 import android.view.View
+import android.app.Activity
 import java.lang.reflect.Method
 import java.util.IdentityHashMap
 
@@ -30,6 +31,12 @@ internal class FragmentChromeNavigation(
     private var last: NavigationSnapshot? = null
     private var iconConfiguration = 0
     private val icons = HashMap<Int, android.graphics.drawable.Drawable?>()
+    private val activity = FragmentChromeContract.method(owner.javaClass, "getActivity").invoke(owner) as Activity
+    private val drawerView = activity.findViewById<View>(view.resources.getIdentifier(
+        contract.resources.getString("drawerNavigation"), "id", activity.packageName))
+    private val drawerMenu = drawerView?.let { FragmentChromeContract.method(it.javaClass, "getMenu").invoke(it) as? Menu }
+    private val libraryTitleLive = contract.libraryTitle.invoke(contract.libraryModel.invoke(owner))
+    private val libraryTitleValue = libraryTitleLive?.let { FragmentChromeContract.method(it.javaClass, "getValue") }
     private var closed = false
 
     override fun snapshot(): NavigationSnapshot {
@@ -52,11 +59,17 @@ internal class FragmentChromeNavigation(
             }
             val nativeModels = (value.invoke(live) as? List<*>)?.filterNotNull().orEmpty()
             models = nativeModels.associateBy { contract.kindId.invoke(contract.modelKind.get(it)) as Int }
-            items = nativeModels.map { model ->
+            items = nativeModels.mapNotNull { model ->
                 val kind = contract.modelKind.get(model)!!
+                val kindName = (kind as Enum<*>).name
+                val id = contract.kindId.invoke(kind) as Int
+                val menuItem = drawerMenu?.findItem(id)
+                if (menuItem?.isVisible == false) return@mapNotNull null
                 val iconId = contract.kindIcon.invoke(kind) as Int
-                NavigationItem(contract.kindId.invoke(kind) as Int, contract.kindLabel.invoke(kind) as String,
-                    if (iconId != 0) icons.getOrPut(iconId) { view.context.getDrawable(iconId) } else null, true)
+                val label = if (kindName == "LIBRARY") libraryTitleValue?.invoke(libraryTitleLive) as? String else null
+                NavigationItem(id, label ?: contract.kindLabel.invoke(kind) as String,
+                    if (kindName == "SEARCH" && iconId != 0) icons.getOrPut(iconId) { view.context.getDrawable(iconId) } else null,
+                    menuItem?.isEnabled ?: true)
             }
             selectedId = selected.invoke(vm)?.let { contract.kindId.invoke(it) as Int }
             // The callback may be captured for an equivalent model object from the same live menu.
@@ -78,6 +91,13 @@ internal class FragmentChromeNavigation(
         if (selectMethod != null) selectMethod.invoke(view, id)
         else models[id]?.let { model -> callbackFor(model)?.let { contract.invokeCallback.invoke(it, model) } }
         return snapshot().also { publish(it) }
+    }
+
+    override fun openDrawer(): Boolean {
+        if (closed || placement != NavigationPlacement.TOP) return false
+        val drawer = contract.drawerOf.invoke(activity) ?: return false
+        contract.drawerOpen.invoke(drawer)
+        return true
     }
 
     fun refresh() { if (!closed) publish(snapshot()) }

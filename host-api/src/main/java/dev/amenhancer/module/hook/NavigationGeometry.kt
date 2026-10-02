@@ -36,7 +36,14 @@ object NavigationGeometry {
 /** Draw generation must match the live menu, so a replacement cannot hide native controls early. */
 class NavigationRenderGate {
     private var drawnRevision: Long? = null
-    fun drawn(revision: Long) { drawnRevision = revision }
+    fun drawn(revision: Long) { drawnRevision = maxOf(drawnRevision ?: revision, revision) }
+    /** Selection changes reuse the drawn surface; only a different menu needs a fresh draw. */
+    fun selectionChanged(previous: NavigationSnapshot, next: NavigationSnapshot) {
+        if (drawnRevision == previous.revision && previous.renderable && next.renderable &&
+            previous.placement == next.placement && previous.items == next.items) {
+            drawnRevision = next.revision
+        }
+    }
     fun ready(snapshot: NavigationSnapshot, backdropReady: Boolean, geometryReady: Boolean): Boolean =
         snapshot.renderable && backdropReady && geometryReady && drawnRevision == snapshot.revision
     fun reset() { drawnRevision = null }

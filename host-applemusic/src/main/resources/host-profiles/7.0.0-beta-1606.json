@@ -1777,6 +1777,9 @@
   "verification": {
     "version_code": "1606",
     "methods": {
+      "Leightbitlab/com/blurview/BlurView;": [
+        "draw(Landroid/graphics/Canvas;)V"
+      ],
       "Lcom/apple/android/music/player/fragment/PlayerLyricsViewFragment;": [
         "w2(Lcom/apple/android/music/ttml/javanative/model/SongInfo$SongInfoPtr;)V",
         "b2(Lz3/w;Lcom/apple/android/music/model/BaseContentItem;Lcom/apple/android/music/player/fragment/e$c;)V",
@@ -1850,7 +1853,8 @@
         "p1()Lcom/apple/android/music/player/fragment/PlayerMainFragment;",
         "onCreateView(Landroid/view/LayoutInflater;Landroid/view/ViewGroup;Landroid/os/Bundle;)Landroid/view/View;",
         "onDestroyView()V",
-        "onViewCreated(Landroid/view/View;Landroid/os/Bundle;)V"
+        "onViewCreated(Landroid/view/View;Landroid/os/Bundle;)V",
+        "q1()Lcom/apple/android/music/common/MainActivityViewModel;"
       ],
       "Lcom/apple/android/music/common/z;": [
         "m()I",
@@ -1862,7 +1866,8 @@
         "getSelectedTab()Lcom/apple/android/music/common/z;"
       ],
       "Lcom/apple/android/music/player/fragment/PlayerMainFragment$i;": [
-        "b(Landroid/view/View;F)V"
+        "b(Landroid/view/View;F)V",
+        "d(F)V"
       ],
       "Lcom/apple/android/music/playback/connectivity/FuseConnectivityChecker;": [
         "isCellularAvailable()Z"
@@ -2063,6 +2068,15 @@
       ],
       "Lq8/H0;": [
         "A(Landroid/view/View;FF)V"
+      ],
+      "Lcom/apple/android/music/common/MainActivity;": [
+        "f1()Landroidx/drawerlayout/widget/DrawerLayout;"
+      ],
+      "Landroidx/drawerlayout/widget/DrawerLayout;": [
+        "n()V"
+      ],
+      "Lcom/apple/android/music/common/MainActivityViewModel;": [
+        "getLibraryTabName()Landroidx/lifecycle/MutableLiveData;"
       ]
     },
     "fields": {
@@ -2320,7 +2334,8 @@
     "playerSlideCallbackField": "c0",
     "slideProgressField": "f",
     "playerOf": "p1",
-    "accentColor": "colorPrimary",
+    "accentColor": "color_primary",
+    "blurClass": "eightbitlab.com.blurview.BlurView",
     "resources": {
       "topNavigation": "top_nav_tabs",
       "bottomNavigation": "bottom_nav_view",
@@ -2332,7 +2347,14 @@
       "miniTouchPanel": "mini_player_touch_panel",
       "miniBlur": "mini_player_blur",
       "playerRoot": "player_root",
-      "playerContent": "player_fragments_host"
-    }
+      "playerContent": "player_fragments_host",
+      "drawerNavigation": "drawer_nav_view",
+      "playerBackground": "background_layers",
+      "playerMotion": "motion_switcher"
+    },
+    "activityClass": "com.apple.android.music.common.MainActivity",
+    "drawerOf": "f1",
+    "drawerOpen": "n",
+    "libraryViewModel": "q1"
   }
 }

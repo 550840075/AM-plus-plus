@@ -32,6 +32,8 @@ interface FragmentPlayerSurfacePort : PlayerSurfacePort, AutoCloseable {
     /** Suppression belongs to this view identity and requires a fully rendered replacement. */
     fun setNavigationGlassReady(ready: Boolean)
     fun setMiniGlassReady(ready: Boolean)
+    /** Native playback/artwork still own their animation; these multiply only the material layers. */
+    fun setPlayerGlassProgress(materialExpansion: Float, motionAlpha: Float) = Unit
     fun observe(observer: (FragmentPlayerSurfaceSnapshot) -> Unit): HostSubscription
 }
 

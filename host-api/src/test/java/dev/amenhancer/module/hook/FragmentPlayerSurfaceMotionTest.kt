@@ -4,6 +4,34 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FragmentPlayerSurfaceMotionTest {
+    @Test fun tabletReferenceTimingSeparatesExpansionFadeAndMotionHandoff() {
+        assertEquals(FragmentTabletGlassFrame(0f, 1f, 0f), FragmentPlayerSurfaceMotion.tabletFrame(0f))
+        assertEquals(FragmentTabletGlassFrame(1f, 1f, 0f), FragmentPlayerSurfaceMotion.tabletFrame(.35f))
+        assertEquals(FragmentTabletGlassFrame(1f, 0f, 0f), FragmentPlayerSurfaceMotion.tabletFrame(.6f))
+        assertEquals(FragmentTabletGlassFrame(1f, 0f, 1f), FragmentPlayerSurfaceMotion.tabletFrame(.85f))
+        assertEquals(.5f, FragmentPlayerSurfaceMotion.tabletFrame(.475f).alpha, .0001f)
+    }
+
+    @Test fun tabletReferenceMorphPreservesNativeVariantsAndEightyPercentExpandedWidth() {
+        listOf(48f, 64f).forEach { miniHeight ->
+            val native = FragmentSurfaceBounds(120f, 18f, 760f, miniHeight)
+            assertEquals(native, FragmentPlayerSurfaceMotion.tabletMaterial(native, 1000f, 800f, 0f, 1f).bounds)
+            val expanded = FragmentPlayerSurfaceMotion.tabletMaterial(native, 1000f, 800f, .35f, 1f)
+            assertEquals(100f, expanded.bounds.left, .001f)
+            assertEquals(800f, expanded.bounds.width, .001f)
+            assertEquals(0f, expanded.bounds.top, .001f)
+            assertEquals(1f, expanded.alpha, .001f)
+            assertEquals(0f, FragmentPlayerSurfaceMotion.tabletMaterial(native, 1000f, 800f, .6f, 1f).alpha, .001f)
+        }
+    }
+
+    @Test fun reversingTabletDragRetracesGeometryWithoutAccumulatedScaleOrPosition() {
+        val native = FragmentSurfaceBounds(80f, 30f, 900f, 64f)
+        val forward = (0..20).map { FragmentPlayerSurfaceMotion.tabletMaterial(native, 1200f, 900f, it / 20f, .8f) }
+        val backward = (20 downTo 0).map { FragmentPlayerSurfaceMotion.tabletMaterial(native, 1200f, 900f, it / 20f, .8f) }
+        assertEquals(forward.reversed(), backward)
+        assertTrue(forward.all { it.bounds.width > 0 && it.bounds.height >= native.height && it.alpha in 0f..1f })
+    }
     @Test fun collapseKeepsNative48And64dpMiniBoundsIncludingAllWideQualifiers() {
         listOf(48f, 64f).forEach { height ->
             listOf(420f, 600f, 690f).forEach { width ->

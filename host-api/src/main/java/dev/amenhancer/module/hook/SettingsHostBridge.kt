@@ -11,6 +11,8 @@ interface SettingsActivityMatcher {
     fun isMainContentActivity(activity: Activity): Boolean
 }
 interface SettingsViewBridge {
+    /** Compose-native settings must never install the legacy decor/title-scan fallback. */
+    val supportsViewFallback: Boolean get() = true
     fun fragmentView(fragment: Any): ViewGroup?
     fun findSettingsListOverlayContainer(root: View): ViewGroup?
     fun injectNativeSettingsPreference(fragment: Any, activity: Activity): Boolean

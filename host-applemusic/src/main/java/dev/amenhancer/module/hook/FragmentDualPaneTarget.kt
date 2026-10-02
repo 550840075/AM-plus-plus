@@ -48,6 +48,7 @@ internal class FragmentDualPaneTarget(
         val destroy = main.getDeclaredMethod("onDestroyView")
         val slideOwner = Class.forName("${main.name}\$i", false, main.classLoader)
         val slide = slideOwner.getDeclaredMethod("b", View::class.java, Float::class.javaPrimitiveType)
+        val progress = slideOwner.getDeclaredMethod("d", Float::class.javaPrimitiveType)
         val slideParent = checkNotNull(dualPaneField(slideOwner, "h")).also { check(it.type == main) }
 
         fun mount(controller: Any, root: View?): FragmentDualPaneState? {
@@ -76,6 +77,19 @@ internal class FragmentDualPaneTarget(
             override fun afterHookedMethod(param: MethodHookParam) {
                 val callback = param.thisObject ?: return
                 val offset = param.args[1] as? Float ?: return
+                guarded {
+                    val controller = slideParent.get(callback) ?: return@guarded
+                    val state = FragmentDualPaneViewMount.state(native.root(controller)) ?: return@guarded
+                    state.artwork?.slide(offset)
+                    state.lyricsHost.alpha = FragmentDualPanePolicy.lyricsAlpha(offset)
+                }
+            }
+        })
+        hook(progress, object : ModernMethodHook() {
+            override fun afterHookedMethod(param: MethodHookParam) {
+                if (param.throwable != null) return
+                val callback = param.thisObject ?: return
+                val offset = param.args[0] as? Float ?: return
                 guarded {
                     val controller = slideParent.get(callback) ?: return@guarded
                     val state = FragmentDualPaneViewMount.state(native.root(controller)) ?: return@guarded

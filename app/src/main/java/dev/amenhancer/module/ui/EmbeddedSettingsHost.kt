@@ -307,6 +307,7 @@ internal class EmbeddedSettingsHost private constructor(
      * on a second Activity resume callback.
      */
     internal fun installMainContentLayoutObserver(activity: Activity) {
+        if (!nativeBridge.supportsViewFallback) return
         val decor = activity.window?.decorView ?: return
         if (observedMainContentActivity?.get() === activity && mainContentLayoutListener != null) {
             onMainContentLayout(activity)
@@ -338,6 +339,7 @@ internal class EmbeddedSettingsHost private constructor(
     }
 
     internal fun onMainContentLayout(activity: Activity) {
+        if (!nativeBridge.supportsViewFallback) return
         if (!registered || activityReference?.get() !== activity) return
         val decor = activity.window?.decorView ?: return
         val activityId = activityKey(activity)
@@ -407,6 +409,7 @@ internal class EmbeddedSettingsHost private constructor(
     }
 
     internal fun injectSettingsOptionIfNeeded(activity: Activity, preferredRoot: ViewGroup? = null) {
+        if (!nativeBridge.supportsViewFallback) { removeSettingsOption(activity); return }
         val content = activity.findViewById<ViewGroup>(android.R.id.content)
         val decor = activity.window?.decorView as? ViewGroup
         if (content == null && decor == null) return

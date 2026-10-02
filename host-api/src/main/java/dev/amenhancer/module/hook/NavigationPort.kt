@@ -29,5 +29,7 @@ data class NavigationSnapshot(
 interface NavigationPort {
     fun snapshot(): NavigationSnapshot
     fun select(id: Int): NavigationSnapshot
+    /** Fixed sidebar action is separate from the selectable tab/lens region. */
+    fun openDrawer(): Boolean = false
     fun observe(observer: (NavigationSnapshot) -> Unit): HostSubscription
 }

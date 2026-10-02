@@ -210,6 +210,7 @@ internal class FragmentDualPaneArtwork(controller: Any, private val state: Fragm
     fun pause() { resumed = false; restore() }
     fun slide(offset: Float) { expanded = offset == 1f; if (!expanded) restore() }
     fun restore() { binding?.translation?.close() }
+    fun coverReady(): Boolean = binding != null
 
     override fun close() {
         removeObserver()

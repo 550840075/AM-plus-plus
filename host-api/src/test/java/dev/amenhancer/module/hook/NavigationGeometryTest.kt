@@ -60,4 +60,32 @@ class NavigationGeometryTest {
         assertTrue(menu.renderable)
         assertFalse(menu.copy(selectedId = 0).renderable)
     }
+
+    @Test fun pageSelectionKeepsDrawnGlassAcrossConsecutiveNativeRevisions() {
+        val gate = NavigationRenderGate()
+        val menu = NavigationSnapshot(listOf(NavigationItem(1, "Home", null, true), NavigationItem(2, "New", null, true)),
+            1, NavigationPlacement.TOP, 7, true)
+        gate.drawn(7)
+        val selected = menu.copy(selectedId = 2, revision = 8)
+        gate.selectionChanged(menu, selected)
+        assertTrue(gate.ready(selected, true, true))
+        val reselected = selected.copy(revision = 9)
+        gate.selectionChanged(selected, reselected)
+        // The old composition can finish drawing while the new selected state is recomposing.
+        gate.drawn(7)
+        assertTrue(gate.ready(reselected, true, true))
+        assertFalse(gate.ready(reselected, false, true))
+    }
+
+    @Test fun menuReplacementOrMissingActionsStillWaitsForNewGlassDraw() {
+        val gate = NavigationRenderGate()
+        val menu = NavigationSnapshot(listOf(NavigationItem(1, "Home", null, true), NavigationItem(2, "New", null, true)),
+            1, NavigationPlacement.TOP, 7, true)
+        gate.drawn(7)
+        val replacement = menu.copy(items = menu.items.map { it.copy(label = it.label + "!") }, revision = 8)
+        gate.selectionChanged(menu, replacement)
+        assertFalse(gate.ready(replacement, true, true))
+        gate.selectionChanged(menu, menu.copy(revision = 9, actionsReady = false))
+        assertFalse(gate.ready(menu.copy(revision = 9), true, true))
+    }
 }

@@ -4,9 +4,28 @@ import kotlin.math.abs
 
 data class FragmentSurfaceBounds(val left: Float, val top: Float, val width: Float, val height: Float)
 data class FragmentMiniMaterial(val bounds: FragmentSurfaceBounds, val cornerExpansion: Float, val alpha: Float)
+data class FragmentTabletGlassFrame(val expansion: Float, val alpha: Float, val motion: Float)
 
 /** Native bounds remain the source of truth for compact and every wide mini variant. */
 object FragmentPlayerSurfaceMotion {
+    /** Accepted 7.0 tablet branch timing: expand to35%, fade35–60%, motion60–85%. */
+    fun tabletFrame(progress: Float): FragmentTabletGlassFrame {
+        val p = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
+        return FragmentTabletGlassFrame(smooth(p / .35f), 1f - smooth((p - .35f) / .25f), smooth((p - .6f) / .25f))
+    }
+
+    fun tabletMaterial(native: FragmentSurfaceBounds, width: Float, height: Float,
+                       progress: Float, nativeAlpha: Float): FragmentMiniMaterial {
+        if (listOf(native.left, native.top, native.width, native.height, width, height, progress, nativeAlpha).any { !it.isFinite() } ||
+            width <= 0f || height <= 0f || native.width <= 0f || native.height <= 0f) return FragmentMiniMaterial(native, 0f, 0f)
+        val p = progress.coerceIn(0f, 1f)
+        val frame = tabletFrame(p)
+        val left = native.left * (1f - frame.expansion) + width * .1f * frame.expansion
+        val right = (width - native.left - native.width) * (1f - frame.expansion) + width * .1f * frame.expansion
+        return FragmentMiniMaterial(FragmentSurfaceBounds(left, native.top * (1f - frame.expansion),
+            (width - left - right).coerceAtLeast(1f), (native.height + (height - native.height) * p).coerceAtLeast(native.height)),
+            frame.expansion, nativeAlpha.coerceIn(0f, 1f) * frame.alpha)
+    }
     fun material(native: FragmentSurfaceBounds, sheetWidth: Float, sheetHeight: Float,
                  expansion: Float, nativeAlpha: Float): FragmentMiniMaterial = material(native,
         FragmentSurfaceBounds(0f, 0f, sheetWidth, sheetHeight), expansion, nativeAlpha)

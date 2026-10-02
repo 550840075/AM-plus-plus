@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,6 +56,11 @@ import com.kyant.shapes.Capsule
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.ui.layout.onGloballyPositioned
+import dev.amenhancer.glass.GlassNavigation
+import dev.amenhancer.glass.GlassNavigationStyle
+import dev.amenhancer.glass.GlassSidebarIcon
+import dev.amenhancer.glass.GlassTab
 
 /** One measured lens renderer for Fragment phone and tablet; the native drawer has no cell. */
 @Composable
@@ -64,10 +70,35 @@ internal fun FragmentGlassNavigation(
     foreground: Color,
     accent: Color,
     blurDp: Int,
-    select: (Int) -> Unit,
+    select: (Int) -> Int?,
     onGeometry: (Boolean) -> Unit,
     onDrawn: (Long) -> Unit,
+    onDrawer: () -> Unit = {},
+    panelHeightPx: Int = 0,
 ) {
+    if (snapshot.placement == NavigationPlacement.TOP) {
+        val density = LocalDensity.current
+        var measuredWidth by remember { mutableIntStateOf(0) }
+        var measuredHeight by remember { mutableIntStateOf(0) }
+        val tabs = remember(snapshot.tabs, foreground) { snapshot.tabs.map { tab ->
+            GlassTab(tab.id, tab.label, tab.icon?.let(::copyNavigationIcon)?.apply { setTint(foreground.toArgb()) }, tab.enabled)
+        } }
+        val drawer = remember(foreground) { GlassSidebarIcon(foreground.toArgb()) }
+        val drawn = rememberUpdatedState(onDrawn)
+        LaunchedEffect(snapshot.renderable, snapshot.revision, measuredWidth, measuredHeight) {
+            onGeometry(snapshot.renderable && measuredWidth > 1 && measuredHeight > 1)
+        }
+        if (!snapshot.renderable) return
+        Box(Modifier.fillMaxSize().onGloballyPositioned { measuredWidth = it.size.width; measuredHeight = it.size.height }
+            .drawWithContent { drawContent(); drawn.value(snapshot.revision) }) {
+            GlassNavigation(tabs, checkNotNull(snapshot.selectedId), accent, foreground, backdrop,
+                onSelect = { id -> select(id) ?: snapshot.selectedId ?: id },
+                panelHeight = if (panelHeightPx > 1) with(density) { panelHeightPx.toDp() } else 56.dp,
+                panelBlur = blurDp.dp, style = GlassNavigationStyle.TabletLabels,
+                drawerIcon = drawer, drawerDescription = "打开侧边导航", onDrawer = onDrawer)
+        }
+        return
+    }
     val tabs = snapshot.tabs
     val density = LocalDensity.current
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
