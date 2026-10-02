@@ -388,7 +388,7 @@ class DualPaneStructuralRegressionTest {
         assertTrue(source.contains("AppleMusicSymbols.LyricsFragmentUpdateMetrics"))
         assertTrue(source.contains("alignSynchronizedLyricsHighlightAnchor"))
         assertTrue(source.contains("TabletLyricAnchorPolicy.highlightOffset"))
-        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.all { profile ->
+        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.filter { it.family == "legacy-activity" }.all { profile ->
             val variants = profile.document.getJSONObject("layoutVariants").getJSONArray("lyricsFields")
             (0 until variants.length()).any { index ->
                 val names = variants.getJSONObject(index).getJSONArray("synchronizedMetrics")

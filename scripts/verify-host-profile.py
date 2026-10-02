@@ -73,6 +73,8 @@ def dex_classes(data):
         offset = u32(base + 24)
         methods = set()
         fields = {}
+        method_access = {}
+        field_access = {}
         if offset:
             counts = []
             for _ in range(4):
@@ -83,20 +85,24 @@ def dex_classes(data):
                 for _ in range(section):
                     delta, offset = _uleb(data, offset)
                     index += delta
-                    _, offset = _uleb(data, offset)
+                    flags, offset = _uleb(data, offset)
                     fields[field_defs[index][0]] = field_defs[index][1]
+                    field_access[field_defs[index][0]] = flags
             for section in counts[2:]:
                 index = 0
                 for _ in range(section):
                     delta, offset = _uleb(data, offset)
                     index += delta
-                    _, offset = _uleb(data, offset)
+                    flags, offset = _uleb(data, offset)
                     _, offset = _uleb(data, offset)
                     methods.add(method_defs[index])
+                    method_access[method_defs[index]] = flags
         classes[class_name] = {
             "super": types[superclass] if superclass != 0xFFFFFFFF else None,
             "methods": methods,
             "fields": fields,
+            "method_access": method_access,
+            "field_access": field_access,
         }
     return classes
 
@@ -132,6 +138,7 @@ def main():
     parser.add_argument("package", type=Path, help="APK, XAPK or APKS (all DEX splits are checked)")
     parser.add_argument("--version-name", default=None)
     parser.add_argument("--version-code", default=None)
+    parser.add_argument("--profile", type=Path, help="explicit profile, including a disabled research build")
     parser.add_argument("--glass", action="store_true", help="also verify the phone glass seams")
     args = parser.parse_args()
 
@@ -160,6 +167,14 @@ def main():
                          (manifest.get('version_code') and str(manifest['version_code']) != str(actual_code))):
             raise SystemExit('Split package manifest disagrees with base Android manifest')
         profile = PROFILES.get((version_name or "", str(version_code)))
+        document = None
+        if args.profile:
+            document = json.loads(args.profile.read_text(encoding="utf-8"))
+            if (document["packageName"], document["versionName"], int(document["versionCode"])) != (
+                package_name, actual_name, actual_code
+            ):
+                raise SystemExit("Explicit profile differs from binary manifest")
+            profile = document["verification"]
         if profile is None:
             raise SystemExit(
                 "Unsupported or undocumented version tuple: %s (%s). Known profiles: %s"
@@ -191,6 +206,30 @@ def main():
         failures = []
         checks = 0
 
+        if document is None:
+            candidate = PROFILE_DIRECTORY / f"{actual_name}-{actual_code}.json"
+            if candidate.is_file():
+                document = json.loads(candidate.read_text(encoding="utf-8"))
+        if document:
+            def descriptor(name):
+                primitive = {'void':'V','int':'I','long':'J','float':'F','boolean':'Z',
+                             'double':'D','byte':'B','short':'S','char':'C'}
+                return primitive.get(name, name.replace('.', '/') if name.startswith('[')
+                                     else 'L' + name.replace('.', '/') + ';')
+            for symbol, contract in document['indexed'].get('methodContracts', {}).items():
+                checks += 1
+                owner = descriptor(contract['owner'])
+                signature = contract['name'] + '(' + ''.join(map(descriptor, contract['parameters'])) + ')' + descriptor(contract['returns'])
+                flags = classes.get(owner, {}).get('method_access', {}).get(signature)
+                if flags is None or bool(flags & 8) != contract['static'] or flags & (0x400 | 0x40 | 0x1000):
+                    failures.append(f'invalid exact method contract {symbol}: {owner} {signature}')
+            for symbol, contract in document['indexed'].get('fieldContracts', {}).items():
+                checks += 1
+                owner = descriptor(contract['owner'])
+                native = classes.get(owner, {})
+                if native.get('fields', {}).get(contract['name']) != descriptor(contract['type']) or native.get('field_access', {}).get(contract['name'], 8) & 8:
+                    failures.append(f'invalid exact field contract {symbol}: {owner} {contract["name"]}')
+
         for owner, signatures in profile["methods"].items():
             if owner not in classes:
                 failures.append("missing class %s" % owner)
@@ -207,6 +246,13 @@ def main():
                     failures.append("missing class %s" % owner)
                 elif field_name not in classes[owner]["fields"]:
                     failures.append("missing field %s %s" % (owner, field_name))
+
+        for owner, fields in profile.get("fieldTypes", {}).items():
+            for name, expected in fields.items():
+                checks += 1
+                native = classes.get(owner, {})
+                if native.get("fields", {}).get(name) != expected or native.get("field_access", {}).get(name, 8) & 8:
+                    failures.append("invalid native field descriptor %s %s:%s" % (owner, name, expected))
 
         for owner, signatures in ALIASED_TYPES.items():
             for signature in signatures:

@@ -33,9 +33,11 @@ class HostProfileEligibilityTest {
         assertFalse(supports(32, 1586, "6.5.2", false))
         assertFalse(supports(36, 1587, "6.5.2", false))
     }
-    @Test fun betaAndReferenceProfilesAreNotProductionBuilds() {
+    @Test fun referenceAndUnverifiedTuplesAreNotProductionBuilds() {
         assertFalse(AppleMusicHostProfiles.isProductionBuild("com.apple.android.music","6.5.0",1580))
-        assertFalse(AppleMusicHostProfiles.isProductionBuild("com.apple.android.music","7.0.0-beta",1606))
+        assertTrue(AppleMusicHostProfiles.isProductionBuild("com.apple.android.music","7.0.0-beta",1606))
+        assertFalse(AppleMusicHostProfiles.isProductionBuild("com.apple.android.music","7.0.0",1606))
+        assertFalse(AppleMusicHostProfiles.isProductionBuild("com.apple.android.music","7.0.0-beta",1607))
         assertFalse(AppleMusicHostProfiles.isProductionBuild("other","6.5.3",1599))
     }
 }

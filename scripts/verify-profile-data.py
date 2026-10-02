@@ -37,6 +37,14 @@ def main():
         if not baseline_path.is_file():
             assert profile.get('ambiguityPolicy', 'reject-ambiguous') == 'reject-ambiguous'
             assert not profile.get('legacyFirstMatchExceptions'), 'new profiles cannot inherit first-match exceptions'
+            for target_list in profile['hookTargets'].values():
+                assert all(not target['allowFirstMatch'] for target in target_list), 'new profiles must reject ambiguous members'
+            for symbol, contract in profile['indexed'].get('methodContracts', {}).items():
+                assert symbol and contract['owner'] and contract['name'] and contract['returns']
+                assert isinstance(contract['static'], bool) and isinstance(contract['parameters'], list)
+                assert all(isinstance(value, str) and value for value in contract['parameters'])
+            for symbol, contract in profile['indexed'].get('fieldContracts', {}).items():
+                assert symbol and all(contract[key] for key in ('owner', 'name', 'type'))
         if baseline_path.is_file():
             baseline = json.loads(baseline_path.read_text(encoding='utf-8'))
             assert profile['indexed'] == baseline['indexed'], f'indexed baseline drift: {filename}'
