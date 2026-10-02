@@ -78,7 +78,7 @@ class CurrentSongIdentityStructuralRegressionTest {
         val installation = projectFile(
             "app/src/main/java/dev/amenhancer/module/hook/FeatureInstallation.kt",
         )
-        val constants = projectFile("app/src/main/java/dev/amenhancer/module/ModuleConstants.kt")
+        val constants = projectFile("core/src/main/kotlin/dev/amenhancer/module/ModuleConstants.kt")
 
         assertTrue(adaptation.contains("currentSong: CurrentSongIdentityCache = CurrentSongIdentityCache()"))
         assertTrue(adaptation.contains("currentSong = currentSong"))
@@ -101,7 +101,7 @@ class CurrentSongIdentityStructuralRegressionTest {
             "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCurrentSongIdentityTarget.kt",
         )
         val details = projectFile(
-            "app/src/main/java/dev/amenhancer/module/CurrentSongDetails.kt",
+            "core/src/main/kotlin/dev/amenhancer/module/CurrentSongDetails.kt",
         )
         val manifest = projectFile("app/src/main/AndroidManifest.xml")
         val entry = projectFile("app/src/main/java/dev/amenhancer/module/hook/HookEntry.kt")

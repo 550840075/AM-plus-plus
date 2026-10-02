@@ -69,7 +69,7 @@ class CustomLyricsReadyLateStructuralRegressionTest {
     @Test
     fun `session publishes the callback only after the cache write`() {
         val session = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/CustomLyricsReplacementSession.kt",
+            "core/src/main/kotlin/dev/amenhancer/module/hook/CustomLyricsReplacementSession.kt",
         )
 
         assertTrue(session.contains("onReplacementPublished"))

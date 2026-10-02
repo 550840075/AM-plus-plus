@@ -45,8 +45,8 @@ class AppleMusicDpiOverrideStructuralTest {
 
     @Test
     fun `settings contract exposes the fixed DPI value and schema key`() {
-        val model = source("app/src/main/java/dev/amenhancer/module/model/ModuleModels.kt")
-        val schema = source("app/src/main/java/dev/amenhancer/module/config/ModuleSettingsSchema.kt")
+        val model = source("core/src/main/kotlin/dev/amenhancer/module/model/ModuleModels.kt")
+        val schema = source("core/src/main/kotlin/dev/amenhancer/module/config/ModuleSettingsSchema.kt")
         val ui = source("app/src/main/java/dev/amenhancer/module/ui/EmbeddedSettingsHost.kt")
         val installation = source("app/src/main/java/dev/amenhancer/module/hook/FeatureInstallation.kt")
 

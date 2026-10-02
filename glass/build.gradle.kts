@@ -18,6 +18,7 @@ kotlin { compilerOptions {
     freeCompilerArgs.add("-Xlambdas=class")
 } }
 dependencies {
+    implementation(project(":core"))
     api(project(":backdrop"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.lifecycle:lifecycle-runtime:2.9.4")

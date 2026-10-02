@@ -14,6 +14,14 @@ import org.junit.Test
 class TabletLiquidGlassStructuralRegressionTest {
     private fun source(relativePath: String): String = sequenceOf(
         File("src/main/java/$relativePath"),
+        File("core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+        File("host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
         File("app/src/main/java/$relativePath"),
     ).firstOrNull(File::isFile)?.readText()
         ?: error("$relativePath was not found from the unit-test working directory")

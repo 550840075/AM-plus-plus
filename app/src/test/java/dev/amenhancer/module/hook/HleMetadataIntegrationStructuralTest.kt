@@ -327,7 +327,7 @@ class HleMetadataIntegrationStructuralTest {
 
     @Test
     fun `schema owns the profile selector and HLE token requests remain isolated`() {
-        val schema = source("app/src/main/java/dev/amenhancer/module/config/ModuleSettingsSchema.kt")
+        val schema = source("core/src/main/kotlin/dev/amenhancer/module/config/ModuleSettingsSchema.kt")
         val target = source(
             "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCatalogLanguageTarget.kt",
         )
