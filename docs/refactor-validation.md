@@ -35,3 +35,5 @@
 4. 分开登记基线既有降级和新退化。新增退化停止后续适配并回退对应提交；数据格式不变，无需反向迁移。
 
 因此，本次自动验证可以支持继续开发和真机回归，尚不能作“旧版功能已全部真机保全”或“整个发布验收完成”的声明。
+
+最终 Release APK：`app/build/outputs/apk/release/app-release.apk`，9,557,932 bytes；SHA-256：`7d034cbac0467ba890e1748e1ec791d23daeade4d62eff67a3d8413b56f5c2f4`。Xposed 入口仍为 `dev.amenhancer.module.hook.HookEntry`，生产 index 顺序仍为 1599 → 1586 → 1583 → 1580 参考。
