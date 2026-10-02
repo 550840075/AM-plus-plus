@@ -36,4 +36,8 @@ v5 手机接入只通过 `BlurView.draw` 拦截替换原生材质，没有调用
 
 当前 ADB 未连接设备，前台恢复视觉效果和实际地区查询结果待用户测试。建议在同一首歌下连续切出／切回，展开／收起后重复，再检查歌名修正各模式及快速换歌。已有平板双栏、歌词、封面、队列和原生底部渐变逻辑保留。
 
-签名 APK、测试数量与 SHA-256 在交付完成后补充。
+实现提交：`fc5c086`。最终951项测试通过（core278、app240、glass22、host-api38、host-applemusic371、hook-runtime2），失败／错误／跳过均为0。最终 Debug Lint、Release vital Lint 和 Release 构建通过。原包253项契约、5个精确 profile／316个目标冻结检查、模块架构及32个原始渲染文件＋2个声明补丁的哈希校验通过。
+
+签名 APK：`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-foreground-metadata-v6.apk`，9,717,560字节，SHA-256：`d90d6359b171b0b49dfdfc43f731dfbf2fc43f30c12508e52c79d0c594bb9e7d`。APK v2／RSA4096签名有效，证书仍为`6ed7800187c3513562334319723498fd01772396b9848d4aeba50622910be0d4`。六个打包 profile/index JSON 与源码逐字节相同，新 metadata bootstrap 和 Xposed 入口均存在。schema15及资产格式不变，旧 v4/v5 安装包保留。
+
+覆盖安装后需要彻底停止 Apple Music 再打开，以加载新的进程 Hook；当前未进行设备安装或验收。
