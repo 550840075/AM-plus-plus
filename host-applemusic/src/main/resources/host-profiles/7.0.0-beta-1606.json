@@ -2060,6 +2060,9 @@
       ],
       "Lcom/apple/android/music/common/views/AlphaGradientFrameLayout;": [
         "d(II)V"
+      ],
+      "Lq8/H0;": [
+        "A(Landroid/view/View;FF)V"
       ]
     },
     "fields": {
@@ -2182,6 +2185,9 @@
         "b": "[I",
         "e": "[F",
         "f": "[F"
+      },
+      "Lq8/a5;": {
+        "h0": "Landroid/widget/FrameLayout;"
       }
     }
   },

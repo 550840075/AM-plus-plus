@@ -37,10 +37,16 @@ internal class FragmentDualPaneLayout(context: Context) : ViewGroup(context) {
         val leftMargin = if (enabled) dp(48) else 0
         val rightMargin = if (enabled) dp(16) else 0
         val leftWidth = if (enabled) width / 2 else width
-        getChildAt(0)?.measure(exact((leftWidth - leftMargin * 2).coerceAtLeast(0)), exact(height))
+        getChildAt(0)?.let { player ->
+            val margins = player.layoutParams as MarginLayoutParams
+            player.measure(exact((leftWidth - leftMargin * 2 - margins.leftMargin - margins.rightMargin).coerceAtLeast(0)),
+                exact((height - margins.topMargin - margins.bottomMargin).coerceAtLeast(0)))
+        }
         getChildAt(1)?.let { right ->
             right.visibility = if (enabled) View.VISIBLE else View.GONE
-            right.measure(exact(if (enabled) (width - leftWidth - rightMargin * 2).coerceAtLeast(0) else 0), exact(if (enabled) height else 0))
+            val margins = right.layoutParams as MarginLayoutParams
+            right.measure(exact(if (enabled) (width - leftWidth - rightMargin * 2 - margins.leftMargin - margins.rightMargin).coerceAtLeast(0) else 0),
+                exact(if (enabled) (height - margins.topMargin - margins.bottomMargin).coerceAtLeast(0) else 0))
         }
     }
 
@@ -51,11 +57,23 @@ internal class FragmentDualPaneLayout(context: Context) : ViewGroup(context) {
         val leftMargin = if (enabled) dp(48) else 0
         val rightMargin = if (enabled) dp(16) else 0
         val middle = if (enabled) width / 2 else width
-        getChildAt(0)?.layout(leftMargin, 0, (middle - leftMargin).coerceAtLeast(leftMargin), height)
-        getChildAt(1)?.layout(if (enabled) middle + rightMargin else 0, 0, if (enabled) (width - rightMargin).coerceAtLeast(middle + rightMargin) else 0, if (enabled) height else 0)
+        getChildAt(0)?.let { player ->
+            val margins = player.layoutParams as MarginLayoutParams
+            val x = leftMargin + margins.leftMargin
+            player.layout(x, margins.topMargin, x + player.measuredWidth, margins.topMargin + player.measuredHeight)
+        }
+        getChildAt(1)?.let { lyrics ->
+            val margins = lyrics.layoutParams as MarginLayoutParams
+            val x = if (enabled) middle + rightMargin + margins.leftMargin else 0
+            val y = if (enabled) margins.topMargin else 0
+            lyrics.layout(x, y, x + lyrics.measuredWidth, y + lyrics.measuredHeight)
+        }
     }
 
-    override fun generateDefaultLayoutParams(): LayoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    override fun generateDefaultLayoutParams(): LayoutParams = MarginLayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    override fun checkLayoutParams(params: LayoutParams): Boolean = params is MarginLayoutParams
+    override fun generateLayoutParams(params: LayoutParams): LayoutParams = if (params is MarginLayoutParams)
+        MarginLayoutParams(params) else MarginLayoutParams(params)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
     private fun exact(value: Int): Int = MeasureSpec.makeMeasureSpec(value, MeasureSpec.EXACTLY)
 }
@@ -79,7 +97,11 @@ internal object FragmentDualPaneViewMount {
         val lyrics = FrameLayout(root.context).apply { id = FragmentDualPanePolicy.RIGHT_HOST_ID }
         parent.removeView(host)
         try {
-            shell.addView(host, shell.generateLayoutParamsForHost())
+            // q8.b5.l -> q8.H0.A updates this view's margins on every native binding pass.
+            // Copy the margin subtype, including relative margins, without aliasing shell params.
+            val playerParams = if (originalParams is ViewGroup.MarginLayoutParams)
+                ViewGroup.MarginLayoutParams(originalParams) else ViewGroup.MarginLayoutParams(originalParams)
+            shell.addView(host, playerParams)
             shell.addView(lyrics, shell.generateLayoutParamsForHost())
             parent.addView(shell, index, originalParams)
         } catch (error: Throwable) {
@@ -94,7 +116,7 @@ internal object FragmentDualPaneViewMount {
     }
 
     private fun FragmentDualPaneLayout.generateLayoutParamsForHost() =
-        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 }
 
 /** Move only the cover position. Native size, radius, paused scale and shared elements stay owned by Apple. */
