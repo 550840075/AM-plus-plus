@@ -17,7 +17,8 @@ class DualPaneStructuralRegressionTest {
     private val source: String by lazy {
         sequenceOf(
             File("src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
-            File("app/src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
+            File("host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
+        File("../host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
         ).firstOrNull(File::isFile)?.readText()
             ?: error("AppleMusicDualPaneTarget.kt was not found from the unit-test working directory")
     }
@@ -25,13 +26,20 @@ class DualPaneStructuralRegressionTest {
         sequenceOf(
             File("src/main/java/dev/amenhancer/module/hook/DualPaneFeature.kt"),
             File("app/src/main/java/dev/amenhancer/module/hook/DualPaneFeature.kt"),
+        File("../app/src/main/java/dev/amenhancer/module/hook/DualPaneFeature.kt"),
+        File("../host-applemusic/src/main/java/dev/amenhancer/module/hook/DualPaneFeature.kt"),
+        File("../host-api/src/main/java/dev/amenhancer/module/hook/DualPaneFeature.kt"),
+        File("../core/src/main/kotlin/dev/amenhancer/module/hook/DualPaneFeature.kt"),
+        File("../hook-runtime/src/main/java/dev/amenhancer/module/hook/DualPaneFeature.kt"),
+
         ).firstOrNull(File::isFile)?.readText()
             ?: error("DualPaneFeature.kt was not found from the unit-test working directory")
     }
     private val interceptGuardSource: String by lazy {
         sequenceOf(
             File("src/main/java/dev/amenhancer/module/hook/StaticCollapsedInterceptGuard.kt"),
-            File("app/src/main/java/dev/amenhancer/module/hook/StaticCollapsedInterceptGuard.kt"),
+            File("host-applemusic/src/main/java/dev/amenhancer/module/hook/StaticCollapsedInterceptGuard.kt"),
+        File("../host-applemusic/src/main/java/dev/amenhancer/module/hook/StaticCollapsedInterceptGuard.kt"),
         ).firstOrNull(File::isFile)?.readText()
             ?: error("StaticCollapsedInterceptGuard.kt was not found from the unit-test working directory")
     }

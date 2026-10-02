@@ -66,7 +66,7 @@ internal sealed interface LyricsTypefacePreparation {
  *   under the same lock and no-op while it is not ready, which keeps the
  *   original font on any failure (fail-open).
  */
-internal class LyricsTypefaceSession {
+internal class LyricsTypefaceSession : LyricsTypefaceResourceBinding {
     private val lock = Any()
     private val loadController = LyricsTypefaceLoadController<Typeface>()
     private val observedRecyclers = Collections.synchronizedMap(WeakHashMap<ViewGroup, Boolean>())
@@ -89,7 +89,7 @@ internal class LyricsTypefaceSession {
         }
     }
 
-    fun registerResources(config: TargetConfigClient) {
+    override fun registerResources(config: TargetConfigClient) {
         synchronized(lock) {
             this.config = config
             if (resourcesRegistered) return

@@ -27,6 +27,8 @@ class HookRegistrationScope : AutoCloseable {
             state = State.CLOSED
             cleanup.asReversed().toList().also { cleanup.clear() }
         }
-        actions.forEach { action -> runCatching(action).onFailure { ModernXposedRuntime.log("Hook scope cleanup failed", it) } }
+        actions.forEach { action -> runCatching(action).onFailure {
+            runCatching { ModernXposedRuntime.log("Hook scope cleanup failed", it) }
+        } }
     }
 }

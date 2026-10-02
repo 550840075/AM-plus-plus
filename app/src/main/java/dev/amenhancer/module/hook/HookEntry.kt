@@ -195,7 +195,9 @@ class HookEntry : XposedModule() {
                                 resourcePreparationStarted.set(false)
                                 return
                             }
-                            val config = TargetConfigClient(bootstrap.reader)
+                            val config = TargetConfigClient(bootstrap.reader) { health ->
+                                ModernXposedRuntime.log("${health.feature}: ${health.state} - ${health.message} [${health.targetVersion}]")
+                            }
                             AppleMusicDpiOverrideRuntime.install(
                                 application = application,
                                 configuredDpi = config.settings().appleMusicDpiOverrideDpi,

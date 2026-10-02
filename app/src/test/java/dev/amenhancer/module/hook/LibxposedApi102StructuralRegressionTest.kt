@@ -29,9 +29,9 @@ class LibxposedApi102StructuralRegressionTest {
     @Test
     fun `uses host private embedded storage and runtime layout inflation replacement`() {
         val storage = projectFile("app/src/main/java/dev/amenhancer/module/config/HostPrivateEmbeddedStorage.kt")
-        val target = projectFile("app/src/main/java/dev/amenhancer/module/config/TargetConfigClient.kt")
+        val target = projectFile("host-api/src/main/java/dev/amenhancer/module/config/TargetConfigClient.kt")
         val entry = projectFile("app/src/main/java/dev/amenhancer/module/hook/HookEntry.kt")
-        val layouts = projectFile("app/src/main/java/dev/amenhancer/module/hook/LayoutInflationRegistry.kt")
+        val layouts = projectFile("host-applemusic/src/main/java/dev/amenhancer/module/hook/LayoutInflationRegistry.kt")
 
         assertTrue(storage.contains("ampp-embedded-settings"))
         assertTrue(storage.contains("ampp-embedded-files"))

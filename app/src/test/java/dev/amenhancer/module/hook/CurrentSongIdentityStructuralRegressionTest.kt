@@ -15,7 +15,7 @@ class CurrentSongIdentityStructuralRegressionTest {
     @Test
     fun `caches the identity in memory without storage or network on the hook path`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCurrentSongIdentityTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCurrentSongIdentityTarget.kt",
         )
         val feature = projectFile(
             "app/src/main/java/dev/amenhancer/module/hook/CurrentSongIdentityFeature.kt",
@@ -39,7 +39,7 @@ class CurrentSongIdentityStructuralRegressionTest {
     @Test
     fun `reuses the verified current item seam instead of duplicating it`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
 
         assertTrue(target.contains("val seam = CurrentItemIdentitySeam(symbols)"))
@@ -55,7 +55,7 @@ class CurrentSongIdentityStructuralRegressionTest {
     @Test
     fun `opens unavailable lyrics only after an exact replacement is ready`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
 
         assertTrue(target.contains("AppleMusicSymbols.LyricsAvailabilityPredicate"))
@@ -72,21 +72,21 @@ class CurrentSongIdentityStructuralRegressionTest {
 
     @Test
     fun `registers the capability in adaptation and the feature in installation`() {
-        val adaptation = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/TargetAdaptation.kt",
-        )
+        val adaptation = projectFile("host-api/src/main/java/dev/amenhancer/module/hook/TargetAdaptation.kt")
+        val factory = projectFile("host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicHostFactory.kt")
+        val assembly = projectFile("app/src/main/java/dev/amenhancer/module/hook/AppleMusicAssembly.kt")
         val installation = projectFile(
             "app/src/main/java/dev/amenhancer/module/hook/FeatureInstallation.kt",
         )
         val constants = projectFile("core/src/main/kotlin/dev/amenhancer/module/ModuleConstants.kt")
 
         assertTrue(adaptation.contains("currentSong: CurrentSongIdentityCache = CurrentSongIdentityCache()"))
-        assertTrue(adaptation.contains("currentSong = currentSong"))
-        assertTrue(adaptation.contains("currentSongIdentity = AppleMusicCurrentSongIdentityTarget("))
-        assertTrue(adaptation.contains("customLyrics = AppleMusicCustomLyricsTarget("))
-        assertTrue(adaptation.contains("autoLyricsRuntime = autoLyricsRuntime"))
-        assertTrue(adaptation.contains("settings.customLyricsEnabled && settings.automaticLyricsEnabled"))
-        assertTrue(adaptation.contains("internal fun interface CurrentSongIdentityTarget"))
+        assertTrue(factory.contains("currentSong = currentSong"))
+        assertTrue(factory.contains("currentSongIdentity = AppleMusicCurrentSongIdentityTarget("))
+        assertTrue(factory.contains("customLyrics = AppleMusicCustomLyricsTarget("))
+        assertTrue(factory.contains("autoLyricsRuntime = autoLyricsRuntime"))
+        assertTrue(assembly.contains("settings.customLyricsEnabled && settings.automaticLyricsEnabled"))
+        assertTrue(adaptation.contains("fun interface CurrentSongIdentityTarget"))
         assertTrue(installation.contains("FeatureInstallationPlan(feature = CurrentSongIdentityFeature())"))
         assertTrue(
             installation.indexOf("FeatureInstallationPlan(feature = CurrentSongIdentityFeature())") <
@@ -98,7 +98,7 @@ class CurrentSongIdentityStructuralRegressionTest {
     @Test
     fun `embedded settings shares the in-process cache without a broadcast bridge`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCurrentSongIdentityTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCurrentSongIdentityTarget.kt",
         )
         val details = projectFile(
             "core/src/main/kotlin/dev/amenhancer/module/CurrentSongDetails.kt",

@@ -2234,5 +2234,141 @@
     }
   },
   "knownDegradations": [],
-  "profileRevision": 1
+  "profileRevision": 1,
+  "chrome": {
+    "resources": {
+      "ARTWORK_CONTAINER": {
+        "name": "artwork_container",
+        "type": "id"
+      },
+      "BOTTOM_NAVIGATION": {
+        "name": "bottom_navigation",
+        "type": "id"
+      },
+      "BOTTOM_NAVIGATION_ROOT_FLAT": {
+        "name": "bottom_navigation_root_flat",
+        "type": "id"
+      },
+      "BOTTOM_NAVIGATION_ROOT_STACKED": {
+        "name": "bottom_navigation_root_stacked",
+        "type": "id"
+      },
+      "BOTTOM_NAVIGATION_TABS_FRAME": {
+        "name": "bottom_navigation_tabs_frame",
+        "type": "id"
+      },
+      "COLOR_PRIMARY": {
+        "name": "color_primary",
+        "type": "color"
+      },
+      "DIVIDER": {
+        "name": "divider",
+        "type": "id"
+      },
+      "FULLPLAYER_SONG_IMAGE": {
+        "name": "fullplayerSongImage",
+        "type": "id"
+      },
+      "MINI_PLAYER": {
+        "name": "mini_player",
+        "type": "id"
+      },
+      "MINI_PLAYER_CONTENT": {
+        "name": "mini_player_content",
+        "type": "id"
+      },
+      "MINI_PLAYER_NEXT_BTN": {
+        "name": "mini_player_next_btn",
+        "type": "id"
+      },
+      "MINI_PLAYER_PLAY_BTN": {
+        "name": "mini_player_play_btn",
+        "type": "id"
+      },
+      "MINI_PLAYER_TOUCH_PANEL": {
+        "name": "mini_player_touch_panel",
+        "type": "id"
+      },
+      "MINIPLAYER_HEIGHT": {
+        "name": "miniplayer_height",
+        "type": "dimen"
+      },
+      "MOTION_SWITCHER": {
+        "name": "motion_switcher",
+        "type": "id"
+      },
+      "NAV_TABS_TOP_SHADOW": {
+        "name": "nav_tabs_top_shadow",
+        "type": "id"
+      },
+      "NAVIGATION_HOST_GROUP": {
+        "name": "navigation_host_group",
+        "type": "id"
+      },
+      "NAVIGATION_TABS_DIVIDER": {
+        "name": "navigation_tabs_divider",
+        "type": "id"
+      },
+      "NAVIGATION_TABS_HEIGHT": {
+        "name": "navigation_tabs_height",
+        "type": "dimen"
+      },
+      "PLAYER_CONTAINER": {
+        "name": "player_container",
+        "type": "id"
+      },
+      "PLAYER_FRAGMENTS_HOST": {
+        "name": "player_fragments_host",
+        "type": "id"
+      },
+      "PLAYER_ROOT": {
+        "name": "player_root",
+        "type": "id"
+      },
+      "PLAYER_SHEET_CONTAINER": {
+        "name": "player_sheet_container",
+        "type": "id"
+      },
+      "SHADOW_HEIGHT": {
+        "name": "shadow_height",
+        "type": "dimen"
+      },
+      "VIDEO_SURFACE_CONTAINER": {
+        "name": "video_surface_container",
+        "type": "id"
+      },
+      "PLAYER_TOP_SHADOW": {
+        "name": "player_top_shadow",
+        "type": "id"
+      },
+      "BACKGROUND_LAYERS": {
+        "name": "background_layers",
+        "type": "id"
+      }
+    },
+    "behavior": {
+      "baseClass": "com.google.android.material.bottomsheet.BottomSheetBehavior",
+      "declaredTypeToken": "BottomSheetBehavior",
+      "runtimeTypeToken": "PlayerBottomSheetBehavior",
+      "stateField": "G",
+      "collapsedTopField": "B",
+      "expandedTopMethod": "B",
+      "peekMethod": "F"
+    },
+    "navigation": {
+      "menuMethod": "getMenu",
+      "selectedMethod": "getSelectedItemId",
+      "selectMethod": "setSelectedItemId"
+    },
+    "views": {
+      "scrollTypes": [
+        "androidx.recyclerview.widget.RecyclerView",
+        "androidx.core.widget.NestedScrollView",
+        "android.widget.ScrollView",
+        "android.widget.ListView"
+      ],
+      "composeType": "androidx.compose.ui.platform.ComposeView",
+      "pagerType": "androidx.viewpager2.widget.ViewPager2"
+    }
+  }
 }

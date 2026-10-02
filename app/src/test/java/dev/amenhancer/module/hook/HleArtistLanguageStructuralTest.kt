@@ -15,7 +15,7 @@ class HleArtistLanguageStructuralTest {
     @Test
     fun resolverNeverTreatsStorefrontLocalizedArtistNamesAsOriginalRegionEvidence() {
         val resolver = source(
-            "app/src/main/java/io/github/proify/lyricon/amprovider/xposed/AppleInternalCatalogResolver.kt",
+            "host-applemusic/src/main/java/io/github/proify/lyricon/amprovider/xposed/AppleInternalCatalogResolver.kt",
         )
         assertFalse(resolver.contains("probeOriginalArtistLanguage"))
         assertFalse(resolver.contains("artistLanguages = listOfNotNull(cachedArtistLanguage)"))
@@ -28,7 +28,7 @@ class HleArtistLanguageStructuralTest {
     @Test
     fun confirmedArtistRegionRequeuesAssociatedSongs() {
         val coordinator = source(
-            "app/src/main/java/io/github/proify/lyricon/amprovider/xposed/metadata/AppleInAppMetadataResolutionCoordinator.kt",
+            "host-applemusic/src/main/java/io/github/proify/lyricon/amprovider/xposed/metadata/AppleInAppMetadataResolutionCoordinator.kt",
         )
         assertTrue(coordinator.contains("resetOriginalResolutionState"))
         assertTrue(coordinator.contains("associatedMediaIds"))

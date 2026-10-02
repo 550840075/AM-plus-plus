@@ -15,7 +15,7 @@ class AppleOriginalMetadataCacheWarmupStructuralTest {
     @Test
     fun startupWarmupNeverQueuesVisibleCacheHitsBehindTheFullCacheScan() {
         val source = source(
-            "app/src/main/java/io/github/proify/lyricon/amprovider/xposed/AppleOriginalMetadataCache.kt",
+            "host-applemusic/src/main/java/io/github/proify/lyricon/amprovider/xposed/AppleOriginalMetadataCache.kt",
         )
         assertTrue(source.contains("private val interactiveExecutor"))
         assertTrue(source.contains("private val warmExecutor"))

@@ -145,13 +145,13 @@ internal object TabletLyricTypography {
     }
 
     private fun applyLyricRowSpacing(row: View) {
-        if (row.getTag(dev.amenhancer.module.R.id.am_enhancer_lyric_spacing_applied) == true) return
+        if (row.getTag(dev.amenhancer.host.applemusic.R.id.am_enhancer_lyric_spacing_applied) == true) return
         val params = row.layoutParams as? ViewGroup.MarginLayoutParams ?: return
         val spacingPx = (
             TabletLyricVisualPolicy.ITEM_SPACING_EXTRA_DP * row.resources.displayMetrics.density + 0.5f
             ).toInt()
         params.bottomMargin += spacingPx
         row.layoutParams = params
-        row.setTag(dev.amenhancer.module.R.id.am_enhancer_lyric_spacing_applied, true)
+        row.setTag(dev.amenhancer.host.applemusic.R.id.am_enhancer_lyric_spacing_applied, true)
     }
 }

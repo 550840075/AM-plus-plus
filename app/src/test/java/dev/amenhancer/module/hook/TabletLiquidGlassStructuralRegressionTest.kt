@@ -16,13 +16,23 @@ class TabletLiquidGlassStructuralRegressionTest {
         File("src/main/java/$relativePath"),
         File("core/src/main/kotlin/$relativePath"),
         File("../core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
         File("host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
         File("../host-api/src/main/java/$relativePath"),
         File("hook-runtime/src/main/java/$relativePath"),
         File("../hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
         File("host-applemusic/src/main/java/$relativePath"),
         File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
         File("app/src/main/java/$relativePath"),
+        File("../app/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+
     ).firstOrNull(File::isFile)?.readText()
         ?: error("$relativePath was not found from the unit-test working directory")
 
@@ -101,7 +111,7 @@ class TabletLiquidGlassStructuralRegressionTest {
         assertTrue(base.contains("restoreInteraction(nav)"))
         assertTrue(session.contains("!glassMenuReady"))
         assertTrue(session.contains("TabletGlassLayoutPolicy.containsEither"))
-        assertTrue(runtime.contains("it.shouldPassThroughTouch(root, event)"))
+        assertTrue(runtime.contains("it.shouldPassThroughTouch(view,event)"))
         assertTrue(runtime.contains("it.shouldBypassPlayerIntercept(event)"))
         // Apple binds both native click and long-click to mini_player_touch_panel.
         assertTrue(!session.contains("setOnClickListener"))

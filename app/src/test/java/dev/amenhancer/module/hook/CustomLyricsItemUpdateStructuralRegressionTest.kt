@@ -23,10 +23,10 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     @Test
     fun `o2 hook resolves the profile backed symbol and registers after i2`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
         val symbols = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/TargetSymbols.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/TargetSymbols.kt",
         )
 
         assertTrue(target.contains("AppleMusicSymbols.LyricsItemUpdateMethod"))
@@ -50,7 +50,7 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     @Test
     fun `o2 hook enters a thread local context before apple and exits after`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
 
         assertTrue(target.contains("itemUpdateContext.enterO2()"))
@@ -62,7 +62,7 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     @Test
     fun `o2 hook coordinates the exact current item and flags holder after apple ran`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
         val o2Hook = target.substringAfter(
             "override fun afterHookedMethod(param: MethodHookParam)",
@@ -76,7 +76,7 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     @Test
     fun `o2 hook path never loads lyrics writes results or hooks resume`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
         val o2Hook = target.substringAfter(
             "AppleMusicSymbols.LyricsItemUpdateMethod",
@@ -94,7 +94,7 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     @Test
     fun `coordinator uses ready only lookup, the i2 identity seam, and the ready late ledger`() {
         val coordinator = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/LyricsItemUpdateCoordinator.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/LyricsItemUpdateCoordinator.kt",
         )
 
         assertTrue(coordinator.contains("fun decideLyricsItemUpdate("))
@@ -121,7 +121,7 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
     @Test
     fun `automatic fallback is prewarmed from observed native metadata and manual ready wins`() {
         val target = projectFile(
-            "app/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
+            "host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCustomLyricsTarget.kt",
         )
 
         assertTrue(target.contains("metadataOfAppleMusicId(id)"))

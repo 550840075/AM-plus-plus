@@ -13,13 +13,23 @@ class FeatureInstallResultTest {
         File("src/main/java/$relativePath"),
         File("core/src/main/kotlin/$relativePath"),
         File("../core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
         File("host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
         File("../host-api/src/main/java/$relativePath"),
         File("hook-runtime/src/main/java/$relativePath"),
         File("../hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
         File("host-applemusic/src/main/java/$relativePath"),
         File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
         File("app/src/main/java/$relativePath"),
+        File("../app/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+
     ).firstOrNull(File::isFile)?.readText()
         ?: error("$relativePath was not found from the unit-test working directory")
 
@@ -63,20 +73,20 @@ class FeatureInstallResultTest {
         ).map(installation::indexOf)
         assertTrue(orderedFeatures.all { it >= 0 })
         assertEquals(orderedFeatures.sorted(), orderedFeatures)
-        assertTrue(installation.contains("DualPaneResourceHook.install()"))
+        assertTrue(installation.contains("AppleMusicHostFactory.registerDualPaneResources()"))
         assertTrue(installation.contains("PhoneLiquidGlassResourceHook::install"))
-        assertTrue(installation.contains("LayoutInflationRegistry::install"))
+        assertTrue(installation.contains("AppleMusicHostFactory::installLayoutCallbacks"))
     }
 
     @Test
     fun `embedded installation shares the resource and target lyric typeface session`() {
         val installation = source("dev/amenhancer/module/hook/FeatureInstallation.kt")
-        val adaptation = source("dev/amenhancer/module/hook/TargetAdaptation.kt")
+        val adaptation = source("dev/amenhancer/module/hook/AppleMusicHostFactory.kt")
 
         assertTrue(installation.contains("private val lyricsTypefaceSession by lazy"))
         assertTrue(installation.contains("productionFeatureInstallationModule(lyricsTypefaceSession)"))
         assertTrue(installation.contains("lyricsTypefaceSession = lyricsTypefaceSession"))
-        assertTrue(adaptation.contains("lyricsTypefaceSession: LyricsTypefaceSession,"))
+        assertTrue(adaptation.contains("lyricsTypefaceSession: LyricsTypefaceResourceBinding,"))
         assertFalse(adaptation.contains("?: LyricsTypefaceSession()"))
     }
 

@@ -19,7 +19,7 @@ class LyricCreditsRowsStructuralRegressionTest {
         sourceFile("OpenSourceLyricBlurPort.kt").readText()
     }
     private val featureSource: String by lazy {
-        sourceFile("FutureLyricBlurFeature.kt").readText()
+        sourceFile("LyricCreditsRowResourceHook.kt").readText()
     }
     private val installationSource: String by lazy {
         sourceFile("FeatureInstallation.kt").readText()
@@ -49,7 +49,7 @@ class LyricCreditsRowsStructuralRegressionTest {
             .substringAfter("feature = FutureLyricBlurFeature()")
             .substringBefore("FeatureInstallationPlan(")
         assertTrue(blurPlan.contains("registerResources"))
-        assertTrue(blurPlan.contains("LyricCreditsRowResourceHook.install"))
+        assertTrue(blurPlan.contains("AppleMusicHostFactory.registerLyricAuxiliaryResources"))
     }
 
     @Test
@@ -169,6 +169,12 @@ class LyricCreditsRowsStructuralRegressionTest {
     private fun sourceFile(name: String): File = sequenceOf(
         File("src/main/java/dev/amenhancer/module/hook/$name"),
         File("app/src/main/java/dev/amenhancer/module/hook/$name"),
+        File("../app/src/main/java/dev/amenhancer/module/hook/$name"),
+        File("../host-applemusic/src/main/java/dev/amenhancer/module/hook/$name"),
+        File("../host-api/src/main/java/dev/amenhancer/module/hook/$name"),
+        File("../core/src/main/kotlin/dev/amenhancer/module/hook/$name"),
+        File("../hook-runtime/src/main/java/dev/amenhancer/module/hook/$name"),
+
     ).firstOrNull(File::isFile) ?: error("$name was not found from the unit-test working directory")
 
     private companion object {

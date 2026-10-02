@@ -18,7 +18,8 @@ class DualPaneStateAccessorsTest {
     private val source: String by lazy {
         sequenceOf(
             File("src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
-            File("app/src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
+            File("host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
+        File("../host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt"),
         ).firstOrNull(File::isFile)?.readText()
             ?: error("AppleMusicDualPaneTarget.kt was not found from the unit-test working directory")
     }

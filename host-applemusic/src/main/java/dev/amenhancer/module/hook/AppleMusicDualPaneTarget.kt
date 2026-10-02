@@ -13,7 +13,7 @@ import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import dev.amenhancer.module.hook.ModernMethodHook as XC_MethodHook
 import dev.amenhancer.module.ModuleConstants
-import dev.amenhancer.module.R
+import dev.amenhancer.host.applemusic.R
 import dev.amenhancer.module.config.TargetConfigClient
 import java.lang.reflect.Field
 import java.lang.reflect.Method
@@ -1040,7 +1040,7 @@ internal class AppleMusicDualPaneTarget(
     }
 }
 
-internal object TabletModeQualifier {
+object TabletModeQualifier {
     fun isOfficialTablet(context: Context): Boolean {
         val tabletId = context.resources.getIdentifier(
             "is_tablet",

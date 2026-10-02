@@ -5,7 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import dev.amenhancer.module.ModuleConstants
-import dev.amenhancer.module.R
+import dev.amenhancer.host.applemusic.R
 import dev.amenhancer.module.config.TargetConfigClient
 import java.lang.reflect.Method
 import java.util.WeakHashMap

@@ -15,7 +15,6 @@ import dev.amenhancer.module.ModuleConstants
 import dev.amenhancer.module.config.TargetConfigClient
 import dev.amenhancer.module.model.FeatureHealth
 import dev.amenhancer.module.model.FeatureState
-import java.lang.reflect.Method
 import java.util.WeakHashMap
 
 @RequiresApi(33)
@@ -85,98 +84,30 @@ internal object PhoneGlassRuntime {
         if (hooksInstalled) return
         check(!hooksAttempted) { "Glass hook installation previously failed; restart the host to retry" }
         hooksAttempted = true
-        val behavior = loader.loadClass("com.apple.android.music.player.PlayerBottomSheetBehavior")
-        // The host obfuscates this override's name; the Coordinator/View/MotionEvent
-        // signature is the verified interception seam on the supported builds.
-        val intercept = behavior.declaredMethods.single { candidate ->
-            val parameters = candidate.parameterTypes
-            candidate.returnType == Boolean::class.javaPrimitiveType &&
-                parameters.size == 3 &&
-                parameters[0].name == "androidx.coordinatorlayout.widget.CoordinatorLayout" &&
-                View::class.java.isAssignableFrom(parameters[1]) &&
-                parameters[2] == MotionEvent::class.java
-        }.apply { isAccessible = true }
-        val peek = method(behavior, "F", Int::class.javaPrimitiveType!!, Boolean::class.javaPrimitiveType!!)
-        // The stacked and flat holders each drive their own slide contract; the outer
-        // activity reflection resolves both holder shapes.
-        for (holderName in listOf("StackedBottomNavigationHolder", "FlatBottomNavigationHolder")) {
-            val holder = loader.loadClass("com.apple.android.music.common.activity.PlayerActivity\$$holderName")
-            ModernXposedRuntime.hookMethod(holder.getDeclaredMethod("c", Float::class.javaPrimitiveType), object : ModernMethodHook() {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val owner = param.thisObject?.let(::outerActivity) ?: return
-                    sessions[owner]?.onSlide((param.args[0] as Number).toFloat())
-                }
-            })
-        }
-        ModernXposedRuntime.hookMethod(ViewGroup::class.java.getDeclaredMethod("dispatchTouchEvent", MotionEvent::class.java), object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                val root = param.thisObject as? View ?: return
-                val event = param.args[0] as MotionEvent
-                if (sessions.values.any { it.shouldPassThroughTouch(root, event) }) {
-                    param.result = false
-                    return
-                }
-                sessions.values.firstNotNullOfOrNull { it.dispatchCollapsedMiniTouch(root, event) }?.let {
-                    param.result = it
-                    return
-                }
-                sessions.values.firstOrNull { it.miniRoot === root }?.observeTouch(event)
+        AppleMusicHostFactory.installChromeHooks(loader, build, object : ChromeHookObserver {
+            override fun onSlide(activity: Activity, progress: Float) { sessions[activity]?.onSlide(progress) }
+            override fun onTouch(view: View, event: MotionEvent): Boolean? {
+                if (sessions.values.any { it.shouldPassThroughTouch(view,event) }) return false
+                sessions.values.firstNotNullOfOrNull { it.dispatchCollapsedMiniTouch(view,event) }?.let { return it }
+                sessions.values.firstOrNull { it.miniRoot === view }?.observeTouch(event)
+                return null
             }
+            override fun bypassIntercept(nativeOwner: Any?, event: MotionEvent): Boolean =
+                sessions.values.any { it.playerBehavior === nativeOwner && it.shouldBypassPlayerIntercept(event) }
+            override fun replacementPeek(nativeOwner: Any?, originalHeight: Int): Int? {
+                val session=sessions.values.firstOrNull { it.playerBehavior === nativeOwner } ?: return null
+                session.observeNativePeek(originalHeight)
+                return if (session.activated) session.peekHeight() else null
+            }
+            override fun onArtworkSlide(artwork: View, progress: Float) {
+                sessions.values.forEach { (it as? TabletDualPaneGlassSession)?.alignNativeArtworkStart(artwork,progress) }
+            }
+            override fun redirectedPadding(view: View?): Int? =
+                sessions.values.firstNotNullOfOrNull { it.redirectedPadding(view) }
+            override fun redirectedAlpha(view: View?, alpha: Float): Float? =
+                sessions.values.firstNotNullOfOrNull { it.redirectedLayerAlpha(view,alpha) }
         })
-        ModernXposedRuntime.hookMethod(intercept, object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                val event = param.args.getOrNull(2) as? MotionEvent ?: return
-                if (sessions.values.any { it.playerBehavior === param.thisObject && it.shouldBypassPlayerIntercept(event) }) {
-                    param.result = false
-                }
-            }
-        })
-        ModernXposedRuntime.hookMethod(peek, object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                sessions.values.firstOrNull { it.playerBehavior === param.thisObject }?.let {
-                    it.observeNativePeek((param.args[0] as Number).toInt())
-                    if (it.activated) param.args[0] = it.peekHeight()
-                }
-            }
-        })
-        // Apple's artwork callback computes the cover transform from the mini
-        // thumbnail and then writes it each slide frame. Apply the tablet-only
-        // source alignment after that write, leaving its scale and the glass
-        // transition untouched. The callback is optional on other host builds.
-        runCatching {
-            val callbackName = checkNotNull(AppleMusicSymbols.playerArtworkSlideCallbackClassName(build)) {
-                "No artwork slide callback profile for ${build.displayName}"
-            }
-            val callback = loader.loadClass(callbackName)
-            val artworkField = callback.getDeclaredField("a").apply { isAccessible = true }
-            val slideMethod = callback.getDeclaredMethod("c", Float::class.javaPrimitiveType!!)
-            ModernXposedRuntime.hookMethod(slideMethod, object : ModernMethodHook() {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val artwork = artworkField.get(param.thisObject) as? View ?: return
-                    val progress = (param.args[0] as? Number)?.toFloat() ?: return
-                    sessions.values.forEach { session ->
-                        (session as? TabletDualPaneGlassSession)?.alignNativeArtworkStart(artwork, progress)
-                    }
-                }
-            })
-        }.onFailure { ModernXposedRuntime.log("liquid glass artwork alignment hook unavailable for ${build.displayName}", it) }
-        // Apple's scrolling behavior reserves bottom padding on the content host.
-        // Redirect it before setPadding rather than fighting it with another layout every frame.
-        ModernXposedRuntime.hookMethod(View::class.java.getDeclaredMethod("setPadding", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType), object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                sessions.values.firstNotNullOfOrNull { it.redirectedPadding(param.thisObject) }?.let { param.args[3] = it }
-            }
-        })
-        // Only the explicitly managed player layers are affected. Preserve the
-        // host's changing target alpha (track changes, motion artwork, lyrics).
-        ModernXposedRuntime.hookMethod(View::class.java.getDeclaredMethod("setAlpha", Float::class.javaPrimitiveType), object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                val alpha = (param.args[0] as Number).toFloat()
-                sessions.values.firstNotNullOfOrNull { it.redirectedLayerAlpha(param.thisObject, alpha) }
-                    ?.let { param.args[0] = it }
-            }
-        })
-        hooksInstalled = true
+        hooksInstalled=true
     }
 
     private fun registerLifecycle(application: Application) {
@@ -193,10 +124,6 @@ internal object PhoneGlassRuntime {
         })
     }
 
-    private fun outerActivity(instance: Any): Activity? = instance.javaClass.declaredFields.firstNotNullOfOrNull { field ->
-        if (!Activity::class.java.isAssignableFrom(field.type)) null else runCatching { field.isAccessible = true; field.get(instance) as? Activity }.getOrNull()
-    }
-
     fun activity(context: Context): Activity? {
         var current = context
         val seen = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Context, Boolean>())
@@ -207,12 +134,4 @@ internal object PhoneGlassRuntime {
         return null
     }
 
-    fun method(type: Class<*>, name: String, vararg parameters: Class<*>): Method {
-        var current: Class<*>? = type
-        while (current != null) {
-            runCatching { current!!.getDeclaredMethod(name, *parameters) }.getOrNull()?.let { return it.apply { isAccessible = true } }
-            current = current.superclass
-        }
-        throw NoSuchMethodException("${type.name}#$name")
-    }
 }

@@ -11,13 +11,23 @@ class PhoneLiquidGlassStructuralRegressionTest {
         File("src/main/java/$relativePath"),
         File("core/src/main/kotlin/$relativePath"),
         File("../core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
         File("host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
         File("../host-api/src/main/java/$relativePath"),
         File("hook-runtime/src/main/java/$relativePath"),
         File("../hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
         File("host-applemusic/src/main/java/$relativePath"),
         File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
         File("app/src/main/java/$relativePath"),
+        File("../app/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+
     ).firstOrNull(File::isFile)?.readText()
         ?: error("$relativePath was not found from the unit-test working directory")
 
@@ -111,7 +121,11 @@ class PhoneLiquidGlassStructuralRegressionTest {
         // RecyclerView shrinks every page, so the page stops above the glass and the bar
         // samples empty background (Search results looked opaque). The pager host must stay
         // out of the padding targets and previously padded targets must be released.
-        assertTrue(session.contains("androidx.viewpager2.widget.ViewPager2"))
+        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.all {
+            it.document.getJSONObject("chrome").getJSONObject("views").getString("pagerType") ==
+                "androidx.viewpager2.widget.ViewPager2"
+        })
+        assertTrue(session.contains("hostBinding.isPagerPageHost(view)"))
         assertTrue(session.contains("!isViewPagerPageHost(view)"))
         assertTrue(session.contains("state.scrollPaddingActive && terminal.none"))
         assertTrue(session.contains("restoreScroll(view)"))

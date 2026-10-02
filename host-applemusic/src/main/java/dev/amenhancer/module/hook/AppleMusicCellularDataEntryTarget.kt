@@ -24,7 +24,7 @@ internal class AppleMusicCellularDataEntryTarget(
     },
 ) : CellularDataEntryTarget {
     private val scope = CellularDataSettingsScope()
-    private val ready = AtomicBoolean(false)
+    private val ready = HookRegistrationScope()
     private var installedResult: TargetCapabilityInstall? = null
 
     @Synchronized
@@ -71,13 +71,13 @@ internal class AppleMusicCellularDataEntryTarget(
                 if (enabledNow()) true else original
             }
             // Partial registration remains dormant on failure, even if the user toggle is already on.
-            ready.set(true)
+            ready.activate()
             TargetCapabilityInstall.Active(
                 "Installed cellular data entry: ${buildMethod.toGenericString()}; " +
                     "${simCheck.toGenericString()}; ${availability.toGenericString()}",
             )
         }.getOrElse { error ->
-            ready.set(false)
+            ready.close()
             TargetCapabilityInstall.Degraded(
                 "Cellular data entry registration failed; callbacks remain dormant: " +
                     "${error.javaClass.simpleName}: ${error.message.orEmpty().take(180)}",
@@ -86,7 +86,7 @@ internal class AppleMusicCellularDataEntryTarget(
     }
 
     // Still push a disabled frame on a read failure, so a nested rebuild cannot borrow its parent's allowance.
-    private fun enabledNow(): Boolean = ready.get() && runCatching(enabled).getOrDefault(false)
+    private fun enabledNow(): Boolean = ready.isActive && runCatching(enabled).getOrDefault(false)
 
     companion object {
         fun supports(build: TargetBuild): Boolean =

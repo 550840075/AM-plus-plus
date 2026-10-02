@@ -20,10 +20,8 @@ internal class PhoneLiquidGlassFeature : FeatureHook {
 
 internal object PhoneLiquidGlassResourceHook {
     fun install(config: TargetConfigClient) {
-        listOf("bottom_navigation", "mini_player").forEach { name ->
-            LayoutInflationRegistry.register(name) { view ->
-                if (Build.VERSION.SDK_INT >= 33 && config.settings().phoneLiquidGlassEnabled) PhoneGlassRuntime.discover(view, config)
-            }
+        AppleMusicHostFactory.registerChromeResources { view ->
+            if (Build.VERSION.SDK_INT >= 33 && config.settings().phoneLiquidGlassEnabled) PhoneGlassRuntime.discover(view, config)
         }
     }
 }
