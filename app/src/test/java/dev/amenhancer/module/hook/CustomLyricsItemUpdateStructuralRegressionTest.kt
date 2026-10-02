@@ -40,7 +40,10 @@ class CustomLyricsItemUpdateStructuralRegressionTest {
         assertEquals(
             // One pin per exact host profile: 6.5.0, 6.5.1, 6.5.2 and 6.5.3.
             4,
-            Regex("TargetSymbolId\\.LYRICS_ITEM_UPDATE_METHOD to \"o2\"").findAll(symbols).count(),
+            dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.count {
+                it.document.getJSONObject("indexed").getJSONObject("methods")
+                    .optString("LYRICS_ITEM_UPDATE_METHOD") == "o2"
+            },
         )
     }
 

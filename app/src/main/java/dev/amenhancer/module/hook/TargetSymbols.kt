@@ -8,18 +8,6 @@ import java.lang.reflect.Modifier
 import java.util.IdentityHashMap
 import java.util.Locale
 
-internal data class TargetBuild(
-    val packageName: String,
-    val versionName: String,
-    val versionCode: Long,
-) {
-    val displayName: String
-        get() = if (versionName.isBlank() && versionCode < 0) "unknown" else "$versionName ($versionCode)"
-
-    companion object {
-        val UNKNOWN = TargetBuild(ModuleConstants.TARGET_PACKAGE, "", -1)
-    }
-}
 internal enum class SymbolMatch {
     VERSION_PROFILE,
     STABLE_NAME,
@@ -275,215 +263,19 @@ internal enum class TargetSymbolId {
 }
 
 private object AppleMusicProfiles {
-    private val appleMusic650 = AppleMusicProfile(
-        id = "apple-music-6.5.0-1580",
-        exactClasses = mapOf(
-            TargetSymbolId.PLAYER_CONTROLLER to "com.apple.android.music.player.fragment.w0",
-            TargetSymbolId.PLAYER_ACTIVITY to "com.apple.android.music.common.activity.PlayerActivity",
-            TargetSymbolId.EDITORIAL_VIDEO_OWNER to "com.apple.android.music.player.c1",
-            TargetSymbolId.LYRICS_FRAGMENT to "com.apple.android.music.player.fragment.PlayerLyricsViewFragment",
-            TargetSymbolId.LYRICS_CHROME to "com.apple.android.music.player.fragment.e",
-            TargetSymbolId.LYRICS_LINE_VECTOR to
-                "com.apple.android.music.ttml.javanative.model.LyricsLineVector",
-            TargetSymbolId.LYRICS_EVENT_PROCESSOR to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor",
-            TargetSymbolId.LYRICS_HIGHLIGHT_CALLBACK_OWNER to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor\$processEvents\$lineEventCallback\$1",
-            TargetSymbolId.LYRICS_VIEW_MODEL to
-                "com.apple.android.music.player.viewmodel.PlayerLyricsViewModel",
-            TargetSymbolId.STACKED_NAVIGATION_MENU to "Hd.b",
-            TargetSymbolId.SONG_INFO_PTR to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoPtr",
-            TargetSymbolId.SONG_INFO_NATIVE to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoNative",
-            TargetSymbolId.TTML_PARSER_NATIVE to
-                "com.apple.android.music.ttml.javanative.TTMLParser\$TTMLParserNative",
-            TargetSymbolId.LYRICS_CURRENT_ITEM_FIELD to
-                "com.apple.android.music.player.fragment.m",
-            TargetSymbolId.PLAYER_METADATA_HUB to "com.apple.android.music.player.f",
-            TargetSymbolId.METADATA_TO_ITEM_CONVERTER to "com.apple.android.music.player.P",
-            TargetSymbolId.LYRICS_AVAILABILITY_OWNER to "com.apple.android.music.player.d1",
-            TargetSymbolId.MEDIA_ENTITY_TO_SONG_CONVERTER to "y8.B",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_OWNER to "J5.a",
-        ),
-        exactMethods = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "k1",
-            TargetSymbolId.PLAYER_ACTIVITY_ROOT to "n0",
-            TargetSymbolId.LYRICS_ITEM_UPDATE_METHOD to "o2",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_METHOD to "b",
-        ),
-        exactFields = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
-        ),
-    )
-
-    private val appleMusic651 = AppleMusicProfile(
-        id = "apple-music-6.5.1-1583",
-        exactClasses = mapOf(
-            TargetSymbolId.PLAYER_CONTROLLER to "com.apple.android.music.player.fragment.q0",
-            TargetSymbolId.PLAYER_ACTIVITY to "com.apple.android.music.common.activity.PlayerActivity",
-            TargetSymbolId.EDITORIAL_VIDEO_OWNER to "com.apple.android.music.player.f1",
-            TargetSymbolId.LYRICS_FRAGMENT to "com.apple.android.music.player.fragment.PlayerLyricsViewFragment",
-            TargetSymbolId.LYRICS_CHROME to "com.apple.android.music.player.fragment.d",
-            TargetSymbolId.LYRICS_LINE_VECTOR to
-                "com.apple.android.music.ttml.javanative.model.LyricsLineVector",
-            TargetSymbolId.LYRICS_EVENT_PROCESSOR to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor",
-            TargetSymbolId.LYRICS_HIGHLIGHT_CALLBACK_OWNER to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor\$processEvents\$lineEventCallback\$1",
-            TargetSymbolId.LYRICS_VIEW_MODEL to
-                "com.apple.android.music.player.viewmodel.PlayerLyricsViewModel",
-            TargetSymbolId.STACKED_NAVIGATION_MENU to "Hd.b",
-            TargetSymbolId.SONG_INFO_PTR to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoPtr",
-            TargetSymbolId.SONG_INFO_NATIVE to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoNative",
-            TargetSymbolId.TTML_PARSER_NATIVE to
-                "com.apple.android.music.ttml.javanative.TTMLParser\$TTMLParserNative",
-            TargetSymbolId.LYRICS_CURRENT_ITEM_FIELD to
-                "com.apple.android.music.player.fragment.l",
-            TargetSymbolId.PLAYER_METADATA_HUB to "com.apple.android.music.player.f",
-            TargetSymbolId.METADATA_TO_ITEM_CONVERTER to "com.apple.android.music.player.O",
-            TargetSymbolId.LYRICS_AVAILABILITY_OWNER to "com.apple.android.music.player.e1",
-            TargetSymbolId.MEDIA_ENTITY_TO_SONG_CONVERTER to "y8.B",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_OWNER to "J5.a",
-        ),
-        exactMethods = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "j1",
-            TargetSymbolId.PLAYER_ACTIVITY_ROOT to "l1",
-            TargetSymbolId.LYRICS_ITEM_UPDATE_METHOD to "o2",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_METHOD to "b",
-        ),
-        exactFields = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
-        ),
-    )
-
-    /**
-     * Apple Music 6.5.3 (1599). Renames were re-derived from the base APK DEX with structural
-     * evidence only: identical member skeletons, unchanged call sites/descriptors and, where two
-     * candidates stayed ambiguous, the same compiled behavior (see the Compose policy singletons).
-     * [TargetSymbolId.PLAYER_METADATA_HUB] is deliberately absent: its 6.5.2 identity was a renamed
-     * lambda and no 6.5.3 candidate carries enough evidence yet, so the symbol keeps its
-     * EXACT_PREFERRED fallback instead of a guessed class.
-     */
-    private val appleMusic653 = AppleMusicProfile(
-        id = "apple-music-6.5.3-1599",
-        exactClasses = mapOf(
-            TargetSymbolId.PLAYER_CONTROLLER to "com.apple.android.music.player.fragment.v0",
-            TargetSymbolId.PLAYER_ARTWORK_SLIDE_CALLBACK to "com.apple.android.music.player.fragment.v0\$k",
-            TargetSymbolId.PLAYER_ACTIVITY to "com.apple.android.music.common.activity.PlayerActivity",
-            TargetSymbolId.EDITORIAL_VIDEO_OWNER to "com.apple.android.music.player.f1",
-            TargetSymbolId.LYRICS_FRAGMENT to "com.apple.android.music.player.fragment.PlayerLyricsViewFragment",
-            TargetSymbolId.LYRICS_CHROME to "com.apple.android.music.player.fragment.e",
-            TargetSymbolId.LYRICS_LINE_VECTOR to
-                "com.apple.android.music.ttml.javanative.model.LyricsLineVector",
-            TargetSymbolId.LYRICS_EVENT_PROCESSOR to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor",
-            TargetSymbolId.LYRICS_HIGHLIGHT_CALLBACK_OWNER to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor\$processEvents\$lineEventCallback\$1",
-            TargetSymbolId.LYRICS_VIEW_MODEL to
-                "com.apple.android.music.player.viewmodel.PlayerLyricsViewModel",
-            TargetSymbolId.STACKED_NAVIGATION_MENU to "Kd.b",
-            TargetSymbolId.SONG_INFO_PTR to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoPtr",
-            TargetSymbolId.SONG_INFO_NATIVE to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoNative",
-            TargetSymbolId.TTML_PARSER_NATIVE to
-                "com.apple.android.music.ttml.javanative.TTMLParser\$TTMLParserNative",
-            TargetSymbolId.LYRICS_CURRENT_ITEM_FIELD to
-                "com.apple.android.music.player.fragment.m",
-            TargetSymbolId.METADATA_TO_ITEM_CONVERTER to "com.apple.android.music.player.P",
-            TargetSymbolId.LYRICS_AVAILABILITY_OWNER to "com.apple.android.music.player.e1",
-            TargetSymbolId.MEDIA_ENTITY_TO_SONG_CONVERTER to "A8.D",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_OWNER to "K5.a",
-            TargetSymbolId.CJK_KARAOKE_ANIMATION_OWNER to "com.apple.android.music.player.A",
-            TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_OWNER to "com.apple.android.music.utils.E0\$a",
-            TargetSymbolId.SETTINGS_FRAGMENT to "com.apple.android.music.settings.fragment.SettingsFragment",
-            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_OWNER to "Oa.c",
-            TargetSymbolId.CELLULAR_AVAILABILITY_OWNER to
-                "com.apple.android.music.playback.connectivity.FuseConnectivityChecker",
-        ),
-        exactMethods = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "k1",
-            TargetSymbolId.PLAYER_ACTIVITY_ROOT to "n0",
-            TargetSymbolId.LYRICS_ITEM_UPDATE_METHOD to "o2",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_METHOD to "b",
-            TargetSymbolId.CJK_KARAOKE_ANIMATION_METHOD to "a0",
-            TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_METHOD to "a",
-            TargetSymbolId.SETTINGS_DATA_CATEGORY_BUILD_METHOD to "t1",
-            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_METHOD to "e",
-            TargetSymbolId.CELLULAR_AVAILABILITY_METHOD to "isCellularAvailable",
-        ),
-        exactFields = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
-        ),
-    )
-
-    private val appleMusic652 = AppleMusicProfile(
-        id = "apple-music-6.5.2-1586",
-        exactClasses = mapOf(
-            TargetSymbolId.PLAYER_CONTROLLER to "com.apple.android.music.player.fragment.t0",
-            TargetSymbolId.PLAYER_ARTWORK_SLIDE_CALLBACK to "com.apple.android.music.player.fragment.t0\$k",
-            TargetSymbolId.PLAYER_ACTIVITY to "com.apple.android.music.common.activity.PlayerActivity",
-            TargetSymbolId.EDITORIAL_VIDEO_OWNER to "com.apple.android.music.player.f1",
-            TargetSymbolId.LYRICS_FRAGMENT to "com.apple.android.music.player.fragment.PlayerLyricsViewFragment",
-            TargetSymbolId.LYRICS_CHROME to "com.apple.android.music.player.fragment.e",
-            TargetSymbolId.LYRICS_LINE_VECTOR to
-                "com.apple.android.music.ttml.javanative.model.LyricsLineVector",
-            TargetSymbolId.LYRICS_EVENT_PROCESSOR to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor",
-            TargetSymbolId.LYRICS_HIGHLIGHT_CALLBACK_OWNER to
-                "com.apple.android.music.ttml.SongInfoTimeProcessor\$processEvents\$lineEventCallback\$1",
-            TargetSymbolId.LYRICS_VIEW_MODEL to
-                "com.apple.android.music.player.viewmodel.PlayerLyricsViewModel",
-            TargetSymbolId.STACKED_NAVIGATION_MENU to "Hd.b",
-            TargetSymbolId.SONG_INFO_PTR to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoPtr",
-            TargetSymbolId.SONG_INFO_NATIVE to
-                "com.apple.android.music.ttml.javanative.model.SongInfo\$SongInfoNative",
-            TargetSymbolId.TTML_PARSER_NATIVE to
-                "com.apple.android.music.ttml.javanative.TTMLParser\$TTMLParserNative",
-            TargetSymbolId.LYRICS_CURRENT_ITEM_FIELD to
-                "com.apple.android.music.player.fragment.m",
-            TargetSymbolId.PLAYER_METADATA_HUB to "com.apple.android.music.player.f",
-            TargetSymbolId.METADATA_TO_ITEM_CONVERTER to "com.apple.android.music.player.O",
-            TargetSymbolId.LYRICS_AVAILABILITY_OWNER to "com.apple.android.music.player.e1",
-            TargetSymbolId.MEDIA_ENTITY_TO_SONG_CONVERTER to "y8.B",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_OWNER to "J5.a",
-            TargetSymbolId.CJK_KARAOKE_ANIMATION_OWNER to "com.apple.android.music.player.z",
-            TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_OWNER to "com.apple.android.music.utils.I0\$a",
-            TargetSymbolId.SETTINGS_FRAGMENT to "com.apple.android.music.settings.fragment.SettingsFragment",
-            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_OWNER to "La.c",
-            TargetSymbolId.CELLULAR_AVAILABILITY_OWNER to
-                "com.apple.android.music.playback.connectivity.FuseConnectivityChecker",
-        ),
-        exactMethods = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_CREATE_STACKED_NAVIGATION_HOLDER to "k1",
-            TargetSymbolId.PLAYER_ACTIVITY_ROOT to "n0",
-            TargetSymbolId.LYRICS_ITEM_UPDATE_METHOD to "o2",
-            TargetSymbolId.STORE_FRONT_LANGUAGE_ARRAY_METHOD to "b",
-            TargetSymbolId.CJK_KARAOKE_ANIMATION_METHOD to "a0",
-            TargetSymbolId.CJK_UNICODE_BLOCK_HELPER_METHOD to "a",
-            TargetSymbolId.SETTINGS_DATA_CATEGORY_BUILD_METHOD to "t1",
-            TargetSymbolId.SETTINGS_CELLULAR_SIM_CHECK_METHOD to "e",
-            TargetSymbolId.CELLULAR_AVAILABILITY_METHOD to "isCellularAvailable",
-        ),
-        exactFields = mapOf(
-            TargetSymbolId.PLAYER_ACTIVITY_BEHAVIOR_FIELD to "c1",
-        ),
-    )
-
-    fun match(build: TargetBuild): AppleMusicProfile? {
-        if (build.packageName != ModuleConstants.TARGET_PACKAGE) return null
-        return when {
-            build.versionName == "6.5.0" && build.versionCode == 1580L -> appleMusic650
-            build.versionName == "6.5.1" && build.versionCode == 1583L -> appleMusic651
-            build.versionName == "6.5.2" && build.versionCode == 1586L -> appleMusic652
-            build.versionName == "6.5.3" && build.versionCode == 1599L -> appleMusic653
-            else -> null
+    fun match(build: TargetBuild): AppleMusicProfile? =
+        dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(
+            build.packageName, build.versionName, build.versionCode,
+        )?.let { profile ->
+            val indexed = profile.document.getJSONObject("indexed")
+            fun names(section: String): Map<TargetSymbolId, String> {
+                val values = indexed.getJSONObject(section)
+                return values.keys().asSequence().associate { key ->
+                    TargetSymbolId.valueOf(key) to values.getString(key)
+                }
+            }
+            AppleMusicProfile(profile.id, names("classes"), names("methods"), names("fields"))
         }
-    }
 }
 
 internal object AppleMusicSymbols {

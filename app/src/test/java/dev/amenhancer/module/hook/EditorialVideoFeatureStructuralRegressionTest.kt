@@ -56,7 +56,10 @@ class EditorialVideoFeatureStructuralRegressionTest {
         val symbols = source("dev/amenhancer/module/hook/TargetSymbols.kt")
         val target = source("dev/amenhancer/module/hook/TargetAdaptation.kt")
 
-        assertTrue(symbols.contains("com.apple.android.music.player.c1"))
+        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.any {
+            it.document.getJSONObject("indexed").getJSONObject("classes")
+                .optString("EDITORIAL_VIDEO_OWNER") == "com.apple.android.music.player.c1"
+        })
         assertTrue(symbols.contains("com.apple.android.music.model.Song"))
         assertTrue(symbols.contains("Float::class.javaPrimitiveType"))
         assertTrue(symbols.contains("EditorialVideo\\\$Flavor"))

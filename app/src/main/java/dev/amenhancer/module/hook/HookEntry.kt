@@ -116,6 +116,10 @@ class HookEntry : XposedModule() {
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         ModernXposedRuntime.attach(this)
+        val moduleInfo = runCatching { getModuleApplicationInfo() }.getOrNull()
+        dev.amenhancer.host.applemusic.AppleMusicHostProfiles.initializeModulePaths(
+            listOfNotNull(moduleInfo?.sourceDir, moduleInfo?.publicSourceDir) + moduleInfo?.splitSourceDirs.orEmpty(),
+        )
         processName = param.processName
         log(
             Log.INFO,

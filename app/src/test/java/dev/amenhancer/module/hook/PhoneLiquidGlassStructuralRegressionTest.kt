@@ -74,7 +74,8 @@ class PhoneLiquidGlassStructuralRegressionTest {
         val runtime = source("dev/amenhancer/module/hook/PhoneGlassRuntime.kt")
 
         // The pre-form supports() overload survives with its phone-only meaning.
-        assertTrue(policy.contains("fun supports(sdk: Int, versionCode: Long, versionName: String, tablet: Boolean)"))
+        assertTrue(policy.contains("fun supports(sdk: Int, verifiedHost: Boolean, tablet: Boolean)"))
+        assertTrue(policy.contains("!tablet && supports(sdk, verifiedHost, GlassHostForm.PhoneStacked)"))
         // The phone path keeps excluding official tablets and keeps its own session.
         assertTrue(runtime.contains("isOfficialTablet"))
         assertTrue(runtime.contains("PhoneGlassSession("))

@@ -38,7 +38,7 @@ internal object PhoneGlassRuntime {
         if (activity in failed || activity.isFinishing || activity.isDestroyed) return
         val build = targetBuild(activity)
         // Both host forms share one seam whitelist; the form itself is routed below.
-        if (GlassHostForm.values().none { GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, build.versionCode, build.versionName, it) }) return
+        if (GlassHostForm.values().none { GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, dev.amenhancer.host.applemusic.AppleMusicHostProfiles.supportsGlass(build.versionCode, build.versionName), it) }) return
         if (!config.settings().phoneLiquidGlassEnabled) return
         registerLifecycle(activity.application)
         view.post {
@@ -60,13 +60,13 @@ internal object PhoneGlassRuntime {
         val build = targetBuild(activity)
         if (config.settings().phoneLiquidGlassEnabled &&
             !TabletModeQualifier.isOfficialTablet(activity) &&
-            GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, build.versionCode, build.versionName, GlassHostForm.PhoneStacked)
+            GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, dev.amenhancer.host.applemusic.AppleMusicHostProfiles.supportsGlass(build.versionCode, build.versionName), GlassHostForm.PhoneStacked)
         ) {
             return PhoneGlassSession(activity, config, onFail)
         }
         if (config.settings().phoneLiquidGlassEnabled &&
             TabletModeQualifier.isEligible(activity) &&
-            GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, build.versionCode, build.versionName, GlassHostForm.TabletDualPane)
+            GlassPolicy.supports(android.os.Build.VERSION.SDK_INT, dev.amenhancer.host.applemusic.AppleMusicHostProfiles.supportsGlass(build.versionCode, build.versionName), GlassHostForm.TabletDualPane)
         ) {
             return TabletDualPaneGlassSession(activity, config, onFail)
         }

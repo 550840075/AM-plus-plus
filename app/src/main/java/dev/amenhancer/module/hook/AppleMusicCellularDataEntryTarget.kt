@@ -90,9 +90,9 @@ internal class AppleMusicCellularDataEntryTarget(
 
     companion object {
         fun supports(build: TargetBuild): Boolean =
-            build.packageName == ModuleConstants.TARGET_PACKAGE &&
-                (build.versionName == "6.5.2" && build.versionCode == 1586L ||
-                    build.versionName == "6.5.3" && build.versionCode == 1599L)
+            dev.amenhancer.host.applemusic.AppleMusicHostProfiles.supportsCellular(
+                build.packageName, build.versionName, build.versionCode,
+            )
     }
 }
 

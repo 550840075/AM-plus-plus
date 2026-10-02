@@ -12,6 +12,7 @@ import dev.amenhancer.module.model.CustomLyricsEntry
  */
 internal data class TargetAdaptation(
     val identity: String,
+    val build: TargetBuild = TargetBuild.UNKNOWN,
     val currentSong: CurrentSongIdentityCache = CurrentSongIdentityCache(),
     val dualPane: DualPaneTarget,
     val editorialVideo: EditorialVideoTarget,
@@ -65,6 +66,7 @@ internal data class TargetAdaptation(
                 }
             return TargetAdaptation(
                 identity = build.displayName,
+                build = build,
                 currentSong = currentSong,
                 dualPane = AppleMusicDualPaneTarget(resolver, build),
                 editorialVideo = AppleMusicEditorialVideoTarget(application, resolver),
