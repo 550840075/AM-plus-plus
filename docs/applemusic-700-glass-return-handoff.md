@@ -38,4 +38,10 @@
 
 验收重点：手机和平板原生设置返回、连续快速进出设置、短/长后台返回、同 root 重挂与 Activity/Fragment 重建；确认菜单和 mini 控件仍可操作、播放器展开/收起正常、关闭玻璃后原生恢复、无监听与会话累积。系统杀进程后的返回应与进程仍存活的恢复分别记录。
 
-候选包：`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-glass-return-v8.apk`。最终打包身份、哈希和签名将在生成后记录。
+候选包：`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-glass-return-v8.apk`，源码提交 `6fa5992`，版本 1.6.2/112，9,734,152 字节。本轮没有安装到设备。
+
+SHA-256：`4323ccd58d0b7d08a08657bcbdfebbdd162b6dd0fc4510cbae41322c6d6535cf`。
+
+APK v2 签名验证通过，沿用 RSA 4096 发布证书，证书 SHA-256：`6ed7800187c3513562334319723498fd01772396b9848d4aeba50622910be0d4`。6 个打包的 profile/index JSON 与源码逐字节一致，Xposed 入口和 1.6.2/112 版本信息验证通过。APK DEX 含新 `FragmentGlassFirstDraw / FragmentViewSessions / GlassFirstFrame`，与 v7 对照确认新增代码已打包。
+
+此包包含此前 v7 的歌词宽度修补，v4/v5/v6/v7 安装包保留。安装后需要强制停止并重开 Apple Music，才能使现有进程加载新模块代码。
