@@ -14,8 +14,26 @@ import org.junit.Test
 class TabletLiquidGlassStructuralRegressionTest {
     private fun source(relativePath: String): String = sequenceOf(
         File("src/main/java/$relativePath"),
+        File("core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+        File("host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
         File("app/src/main/java/$relativePath"),
-    ).firstOrNull(File::isFile)?.readText()
+        File("../app/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     /** Collapses line wraps so multi-line expressions can be matched as written prose. */
@@ -38,7 +56,10 @@ class TabletLiquidGlassStructuralRegressionTest {
             constructionSites.isNotEmpty(),
         )
         constructionSites.forEach { (build, text) ->
-            val gates = text.substring(maxOf(0, build - 600), build)
+            val gates = normalized(runtime).substringAfter("private fun desiredSessionType")
+                .substringBefore("private fun fail")
+            assertTrue(runtime.contains("val desired = desiredSessionType(activity, config)"))
+            assertTrue(text.substring(maxOf(0, build - 600), build).contains("if (desired == TabletDualPaneGlassSession::class.java)"))
             assertTrue(gates.contains("TabletModeQualifier.isEligible"))
             assertTrue(gates.contains("phoneLiquidGlassEnabled"))
         }
@@ -93,7 +114,7 @@ class TabletLiquidGlassStructuralRegressionTest {
         assertTrue(base.contains("restoreInteraction(nav)"))
         assertTrue(session.contains("!glassMenuReady"))
         assertTrue(session.contains("TabletGlassLayoutPolicy.containsEither"))
-        assertTrue(runtime.contains("it.shouldPassThroughTouch(root, event)"))
+        assertTrue(runtime.contains("it.shouldPassThroughTouch(view,event)"))
         assertTrue(runtime.contains("it.shouldBypassPlayerIntercept(event)"))
         // Apple binds both native click and long-click to mini_player_touch_panel.
         assertTrue(!session.contains("setOnClickListener"))

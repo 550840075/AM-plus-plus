@@ -12,8 +12,26 @@ import org.junit.Test
 class EditorialVideoFeatureStructuralRegressionTest {
     private fun source(relativePath: String): String = sequenceOf(
         File("src/main/java/$relativePath"),
+        File("core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+        File("host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
         File("app/src/main/java/$relativePath"),
-    ).firstOrNull(File::isFile)?.readText()
+        File("../app/src/main/java/$relativePath"),
+        File("../host-applemusic/src/main/java/$relativePath"),
+        File("../host-api/src/main/java/$relativePath"),
+        File("../core/src/main/kotlin/$relativePath"),
+        File("../hook-runtime/src/main/java/$relativePath"),
+
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     @Test
@@ -46,9 +64,12 @@ class EditorialVideoFeatureStructuralRegressionTest {
     @Test
     fun `matches only the modified apk editorial video url selector contract`() {
         val symbols = source("dev/amenhancer/module/hook/TargetSymbols.kt")
-        val target = source("dev/amenhancer/module/hook/TargetAdaptation.kt")
+        val target = source("dev/amenhancer/module/hook/AppleMusicEditorialVideoTarget.kt")
 
-        assertTrue(symbols.contains("com.apple.android.music.player.c1"))
+        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.any {
+            it.document.getJSONObject("indexed").getJSONObject("classes")
+                .optString("EDITORIAL_VIDEO_OWNER") == "com.apple.android.music.player.c1"
+        })
         assertTrue(symbols.contains("com.apple.android.music.model.Song"))
         assertTrue(symbols.contains("Float::class.javaPrimitiveType"))
         assertTrue(symbols.contains("EditorialVideo\\\$Flavor"))
@@ -62,7 +83,7 @@ class EditorialVideoFeatureStructuralRegressionTest {
     fun `suppresses only in official tablet landscape when dual pane is enabled`() {
         val qualifier = source("dev/amenhancer/module/hook/AppleMusicDualPaneTarget.kt")
         val feature = source("dev/amenhancer/module/hook/EditorialVideoFeature.kt")
-        val target = source("dev/amenhancer/module/hook/TargetAdaptation.kt")
+        val target = source("dev/amenhancer/module/hook/AppleMusicEditorialVideoTarget.kt")
 
         assertTrue(qualifier.contains("fun isOfficialTabletLandscape(context: Context): Boolean"))
         assertTrue(target.contains("TabletModeQualifier.isOfficialTabletLandscape(application)"))

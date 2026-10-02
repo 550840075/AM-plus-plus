@@ -8,7 +8,7 @@ class AppleMusicDpiOverrideStructuralTest {
     private fun source(relativePath: String): String = sequenceOf(
         File(relativePath),
         File("../$relativePath"),
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found")
 
     @Test
@@ -16,11 +16,11 @@ class AppleMusicDpiOverrideStructuralTest {
         val hookEntry = source("app/src/main/java/dev/amenhancer/module/hook/HookEntry.kt")
         val before = hookEntry.substringAfter("override fun beforeHookedMethod")
             .substringBefore("override fun afterHookedMethod")
-        assertTrue(before.contains("AppleMusicDpiOverrideRuntime.install("))
-        assertTrue(before.indexOf("AppleMusicDpiOverrideRuntime.install(") <
+        assertTrue(before.contains("AppleMusicHostFactory.installDensity("))
+        assertTrue(before.indexOf("AppleMusicHostFactory.installDensity(") <
             before.indexOf("FeatureInstallation.registerResources(config)"))
 
-        val runtime = source("app/src/main/java/dev/amenhancer/module/hook/AppleMusicDpiOverride.kt")
+        val runtime = source("host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicDpiOverride.kt")
         assertTrue(runtime.contains("Resources::class.java.getDeclaredMethod"))
         assertTrue(runtime.contains("registerActivityLifecycleCallbacks(this)"))
         assertTrue(runtime.contains("registerComponentCallbacks(this)"))
@@ -32,7 +32,7 @@ class AppleMusicDpiOverrideStructuralTest {
 
     @Test
     fun `failed installation deactivates already registered seams`() {
-        val runtime = source("app/src/main/java/dev/amenhancer/module/hook/AppleMusicDpiOverride.kt")
+        val runtime = source("host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicDpiOverride.kt")
 
         assertTrue(runtime.contains("runtimeEnabled"))
         assertTrue(runtime.contains("if (!runtimeEnabled.get()) return"))
@@ -45,8 +45,8 @@ class AppleMusicDpiOverrideStructuralTest {
 
     @Test
     fun `settings contract exposes the fixed DPI value and schema key`() {
-        val model = source("app/src/main/java/dev/amenhancer/module/model/ModuleModels.kt")
-        val schema = source("app/src/main/java/dev/amenhancer/module/config/ModuleSettingsSchema.kt")
+        val model = source("core/src/main/kotlin/dev/amenhancer/module/model/ModuleModels.kt")
+        val schema = source("core/src/main/kotlin/dev/amenhancer/module/config/ModuleSettingsSchema.kt")
         val ui = source("app/src/main/java/dev/amenhancer/module/ui/EmbeddedSettingsHost.kt")
         val installation = source("app/src/main/java/dev/amenhancer/module/hook/FeatureInstallation.kt")
 

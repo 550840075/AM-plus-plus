@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "AMPlusPlus"
 include(":app")
 include(":backdrop", ":glass")
+include(":core", ":host-api", ":hook-runtime", ":host-applemusic")

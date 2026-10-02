@@ -78,6 +78,10 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
+    implementation(project(":host-api"))
+    implementation(project(":hook-runtime"))
+    implementation(project(":host-applemusic"))
     implementation(project(":glass"))
     compileOnly("io.github.libxposed:api:102.0.0")
     compileOnly("io.github.libxposed:service:102.0.0")

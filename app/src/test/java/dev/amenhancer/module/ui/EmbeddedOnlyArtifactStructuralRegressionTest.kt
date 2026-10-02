@@ -1,4 +1,5 @@
 package dev.amenhancer.module.ui
+import dev.amenhancer.module.hook.readRefactorComponent
 
 import java.io.File
 import org.junit.Assert.assertFalse
@@ -9,7 +10,7 @@ class EmbeddedOnlyArtifactStructuralRegressionTest {
     private fun projectFile(relativePath: String): String = sequenceOf(
         File(relativePath),
         File("../$relativePath"),
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readRefactorComponent()
         ?: error("$relativePath was not found from the unit-test working directory")
 
     private fun projectPath(relativePath: String): File = sequenceOf(

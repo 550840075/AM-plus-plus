@@ -41,7 +41,7 @@ Compose Multiplatform 1.12.0 and io.github.kyant0:shapes:1.2.1 are Apache-2.0 de
 ## HyperLyrics-Enhanced cellular data settings
 
 The cellular data settings scope and hook behavior in
-`app/src/main/java/dev/amenhancer/module/hook/AppleMusicCellularDataEntryTarget.kt`
+`host-applemusic/src/main/java/dev/amenhancer/module/hook/AppleMusicCellularDataEntryTarget.kt`
 are adapted from HyperLyrics-Enhanced's `AppleCellularDataSettingsHooks.kt`,
 source snapshot `38cf511`.
 
