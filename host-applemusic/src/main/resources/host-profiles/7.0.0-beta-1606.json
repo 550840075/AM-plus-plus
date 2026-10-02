@@ -1880,7 +1880,8 @@
         "onResume()V",
         "onPause()V",
         "onDestroyView()V",
-        "m1()Landroidx/fragment/app/m;"
+        "m1()Landroidx/fragment/app/m;",
+        "f1(Lcom/apple/android/music/player/fragment/PlayerMainFragment;)Landroid/view/View;"
       ],
       "Lcom/apple/android/music/player/A$f;": [
         "onAnimationUpdate(Landroid/animation/ValueAnimator;)V"

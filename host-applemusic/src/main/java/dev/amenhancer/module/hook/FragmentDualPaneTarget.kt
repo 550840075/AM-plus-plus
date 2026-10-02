@@ -10,7 +10,7 @@ internal class FragmentDualPaneTarget(private val symbols: TargetSymbolResolver,
             check(targetBuild.packageName == "com.apple.android.music" && targetBuild.versionName == "7.0.0-beta" && targetBuild.versionCode == 1606L)
             val create = checkNotNull(symbols.resolve(AppleMusicSymbols.PlayerControllerCreateView).valueOrNull())
             FragmentTabletDualPaneCoordinator.install(checkNotNull(create.declaringClass.classLoader), registration)
-            TargetCapabilityInstall.Active("1606 reference player: native SONG/QUEUE left, native lyrics right, complete cover handoff")
+            TargetCapabilityInstall.Active("1606 player: native SONG/QUEUE left, native lyrics right, native artwork/video animation")
         }.getOrElse { registration.close(); TargetCapabilityInstall.Degraded("1606 reference player contract failed: ${it.message}") }
         if (result is TargetCapabilityInstall.Active) registration.activate() else registration.close()
         installed = result

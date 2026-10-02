@@ -25,6 +25,7 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import dev.amenhancer.glass.GlassPolicy
+import dev.amenhancer.module.hook.AppleMusicHostFactory
 import dev.amenhancer.module.CurrentSongDetails
 import dev.amenhancer.module.model.CustomLyricsSources
 import dev.amenhancer.module.model.ModuleSettings
@@ -317,7 +318,9 @@ internal fun EmbeddedSettingsHost.renderEmbeddedMainPage(
             addView(embeddedSettingRow(
                 activity,
                 "平板双栏播放器",
-                "平板横屏启用双栏，同时停用 Editorial Video",
+                if (AppleMusicHostFactory.preservesNativeEditorialVideo(activity))
+                    "平板横屏启用双栏，保留原生动态封面"
+                else "平板横屏启用双栏，同时停用 Editorial Video",
                 settings.dualPaneEnabled,
                 iconTint = EmbeddedSettingsPalette.primary,
                 iconDrawable = EmbeddedGlyphDrawable(

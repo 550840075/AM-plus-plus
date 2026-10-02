@@ -8,14 +8,11 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.RequiresApi
 import java.util.WeakHashMap
-import java.util.IdentityHashMap
 
 /** Uses only verified 1606 contracts; the legacy dual-pane installer remains closed to beta. */
 internal object FragmentTabletDualPaneCoordinator {
     private val sessions = WeakHashMap<Any, FragmentTabletDualPaneSession>()
     private val roots = WeakHashMap<Any, ViewGroup>()
-    private val artworkOwners = IdentityHashMap<View, FragmentTabletDualPaneSession>()
-    private val playbackTargets = WeakHashMap<View, Float>()
     private val failed = WeakHashMap<Any, Boolean>()
     private class WindowGate(val width: Int, val height: Int, val density: Int, val drawer: Boolean)
     private val windows = WeakHashMap<Resources, WindowGate>()
@@ -30,14 +27,14 @@ internal object FragmentTabletDualPaneCoordinator {
     }
     fun install(loader: ClassLoader, registration: HookRegistrationScope) {
         this.registration = registration
-        registration.onClose { sessions.values.toList().forEach { it.destroy() }; sessions.clear(); roots.clear(); artworkOwners.clear(); failed.clear(); progressValues.clear() }
+        registration.onClose { sessions.values.toList().forEach { it.destroy() }; sessions.clear(); roots.clear(); failed.clear(); progressValues.clear() }
         val lyricsClass = loader.loadClass("com.apple.android.music.player.fragment.PlayerLyricsViewFragment")
         val build = TargetBuild("com.apple.android.music", "7.0.0-beta", 1606L)
         val profile = checkNotNull(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(build.packageName, build.versionName, build.versionCode))
         val karaoke = FragmentKaraokeWidthContract(lyricsClass, profile.document.getJSONObject("fragmentKaraokeWidth"))
         val visual = BetaLyricsPaneRuntime(lyricsClass, checkNotNull(LyricsLayoutFieldProfiles.resolve(lyricsClass, build)), karaoke)
         visual.validate(); visual.install(registration)
-        installArtworkHooks(loader)
+        installProgressObserver(loader)
         val controller = loader.loadClass("com.apple.android.music.player.fragment.PlayerMainFragment")
         val state = loader.loadClass("com.apple.android.music.player.fragment.PlayerMainFragment\$l")
         val bag = loader.loadClass("com.apple.android.music.storeapi.model.BagConfig")
@@ -88,7 +85,7 @@ internal object FragmentTabletDualPaneCoordinator {
                 sessions.remove(owner)?.destroy()
                 roots.remove(owner)
                 failed.remove(owner)
-        progressValues.remove(owner)
+                progressValues.remove(owner)
             }
         })
     }
@@ -98,48 +95,21 @@ internal object FragmentTabletDualPaneCoordinator {
         check(ModernXposedRuntime.hookMethod(method, callback, registration)) { "Reference dual-pane hook failed: $method" }
     }
 
-    private fun installArtworkHooks(loader: ClassLoader) {
+    /** Observe the completed native frame for lyrics/materials; never replace its artwork writes. */
+    private fun installProgressObserver(loader: ClassLoader) {
         val callback = loader.loadClass("com.apple.android.music.player.fragment.PlayerMainFragment\$i")
-        val slide = callback.getDeclaredMethod("b", View::class.java, Float::class.javaPrimitiveType)
         val artwork = callback.getDeclaredMethod("d", Float::class.javaPrimitiveType)
         val owner = callback.getDeclaredField("h").apply { isAccessible = true }
         hook(artwork, object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                owner.get(param.thisObject)?.let(FragmentTabletDualPaneCoordinator::beginArtwork)
-            }
             override fun afterHookedMethod(param: MethodHookParam) {
+                if (param.throwable != null) return
                 val controller = owner.get(param.thisObject) ?: return
                 val progress = (param.args[0] as? Number)?.toFloat() ?: return
+                if (!progress.isFinite()) return
                 progressValues[controller] = progress.coerceIn(0f, 1f)
-                FragmentTabletDualPaneCoordinator.onArtwork(controller, progress)
-            }
-        })
-        hook(callback.getDeclaredMethod("e"), object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                owner.get(param.thisObject)?.let(FragmentTabletDualPaneCoordinator::beginArtwork)
-            }
-            override fun afterHookedMethod(param: MethodHookParam) {
-                owner.get(param.thisObject)?.let { FragmentTabletDualPaneCoordinator.endArtwork(it, null) }
-            }
-        })
-        for (x in listOf(true, false)) hook(
-            View::class.java.getDeclaredMethod(if (x) "setScaleX" else "setScaleY", Float::class.javaPrimitiveType),
-            object : ModernMethodHook() {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    val view = param.thisObject as? View ?: return
-                    val scale = (param.args[0] as? Number)?.toFloat() ?: return
-                    FragmentTabletDualPaneCoordinator.redirectArtworkScale(view, x, scale)?.let { param.args[0] = it }
+                sessions[controller]?.takeIf { failed[controller] != true }?.let { session ->
+                    guarded(controller) { session.onSlide(progress) }
                 }
-            },
-        )
-        hook(loader.loadClass("com.apple.android.music.player.G0")
-            .getDeclaredMethod("P", View::class.java, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType), object : ModernMethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                val view = param.args[0] as? View ?: return
-                FragmentTabletDualPaneCoordinator.beforePlaybackAnimation(view, param.args[1] as Int, param.args[2] as Boolean)
-            }
-            override fun afterHookedMethod(param: MethodHookParam) {
-                (param.args[0] as? View)?.let(FragmentTabletDualPaneCoordinator::afterPlaybackAnimation)
             }
         })
     }
@@ -177,27 +147,6 @@ internal object FragmentTabletDualPaneCoordinator {
     }
 
     fun onRestored(owner: Any) { roots[owner]?.post { reconcile(owner) } }
-    fun beginArtwork(controller: Any) {
-        if (failed[controller] != true) sessions[controller]?.takeIf { eligible(it.root.context) }?.let { session -> guarded(controller) { session.beginNativeArtwork() } }
-    }
-    fun endArtwork(controller: Any, progress: Float?) {
-        sessions[controller]?.let { session ->
-            session.endNativeArtwork()
-            if (progress != null && failed[controller] != true) guarded(controller) { session.onSlide(progress) }
-        }
-    }
-    fun onArtwork(controller: Any, progress: Float) = endArtwork(controller, progress)
-    fun ownArtwork(view: View, session: FragmentTabletDualPaneSession) { artworkOwners[view] = session }
-    fun releaseArtwork(view: View?) { if (view != null) artworkOwners.remove(view) }
-    private fun artworkOwner(view: View) = artworkOwners[view]?.takeIf { failed[it.controller] != true && eligible(it.root.context) }
-    fun redirectArtworkScale(view: View, x: Boolean, scale: Float): Float? = artworkOwner(view)?.nativeScale(x, scale)
-    fun playbackTarget(view: View): Float? = playbackTargets[view]
-    fun beforePlaybackAnimation(view: View, state: Int, seeking: Boolean) {
-        // Binding may publish a paused state before the dual-pane observer claims its cover.
-        playbackTargets[view] = FragmentTabletArtworkPolicy.playbackScale(state, seeking)
-        artworkOwner(view)?.let { session -> guarded(session.controller) { session.beforePlaybackAnimation() } }
-    }
-    fun afterPlaybackAnimation(view: View) { artworkOwner(view)?.let { session -> guarded(session.controller) { session.afterPlaybackAnimation() } } }
     fun active(player: View?): Boolean = sessions.values.any { it.installed && it.player === player && failed[it.controller] != true && eligible(it.root.context) }
-    fun coverReady(player: View?): Boolean = sessions.values.any { it.installed && it.player === player && it.coverAligned && failed[it.controller] != true && eligible(it.root.context) }
+    fun coverReady(player: View?): Boolean = sessions.values.any { it.installed && it.player === player && failed[it.controller] != true && eligible(it.root.context) && it.nativeCoverReady() }
 }

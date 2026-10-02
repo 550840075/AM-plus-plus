@@ -19,6 +19,7 @@ object AppleMusicHostFactory {
             build.packageName, build.versionName, build.versionCode,
         )?.family == "fragment-content"
     }
+    fun preservesNativeEditorialVideo(context: android.content.Context): Boolean = fragmentFamily(context)
     fun settingsActivityMatcher(context: android.content.Context, playerClass: Class<*>?): SettingsActivityMatcher =
         if (fragmentFamily(context)) FragmentSettingsNativeFactory.activityMatcher(context)
         else settingsNames(context).let { LegacySettingsActivityMatcher(playerClass,it.getString("playerActivity"),it.getString("mainActivity")) }
@@ -68,7 +69,9 @@ object AppleMusicHostFactory {
             currentSong = currentSong,
             dualPane = if (profile.family == "fragment-content") FragmentDualPaneTarget(resolver, build)
                 else AppleMusicDualPaneTarget(resolver, build),
-            editorialVideo = AppleMusicEditorialVideoTarget(application, resolver),
+            editorialVideo = editorialVideoTargetForFamily(profile.family) {
+                AppleMusicEditorialVideoTarget(application, resolver)
+            },
             cellularDataEntry = if (profile.family == "fragment-content") FragmentCellularDataEntryTarget(
                 resolver, build, classLoader, { config.settings().forceCellularDataEntryEnabled },
             ) else AppleMusicCellularDataEntryTarget(
