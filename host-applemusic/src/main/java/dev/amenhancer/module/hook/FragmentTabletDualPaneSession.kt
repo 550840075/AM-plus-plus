@@ -1,6 +1,7 @@
 package dev.amenhancer.module.hook
 
 import android.annotation.SuppressLint
+import android.graphics.Rect
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -47,15 +48,17 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
     private var cover: View? = null
     private val nativeCallback = checkNotNull(controller.javaClass.getDeclaredField("c0").apply { isAccessible = true }.get(controller))
     private val nativeCoverGetter = resolveFragmentNativeCoverGetter(controller.javaClass)
+    private val behaviorField = controller.javaClass.getDeclaredField("c").apply { isAccessible = true }
+    private val behaviorState = behaviorField.type.getDeclaredField("p0").apply { isAccessible = true }
+    private val expandedSheetTop = resolveFragmentExpandedSheetTop(behaviorField.type)
     private var artworkContainer: View? = null
     private var metadataBarrier: View? = null
     private var artworkParams: ViewGroup.LayoutParams? = null
     private var nativeArtworkSize = 0
     private var artworkDirty = true
-    private val artworkParentLocation = IntArray(2)
-    private val hostLocation = IntArray(2)
+    private val artworkLayoutBounds = Rect()
+    private val coordinatorLocation = IntArray(2)
     private val rootLocation = IntArray(2)
-    private val barrierLocation = IntArray(2)
     private var rightRoot: View? = null
     private var chrome: List<View> = emptyList()
     private val artworkListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
@@ -121,9 +124,8 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
 
     private fun currentSlide(): Float {
         FragmentTabletDualPaneCoordinator.progress(controller)?.let { return it }
-        val behavior = controller.javaClass.getDeclaredField("c").apply { isAccessible = true }.get(controller)
-        val base = loader.loadClass("com.google.android.material.bottomsheet.BottomSheetBehavior")
-        return if (base.getDeclaredField("p0").apply { isAccessible = true }.getInt(behavior) == 3) 1f else 0f
+        val behavior = behaviorField.get(controller) ?: return 0f
+        return if (behaviorState.getInt(behavior) == 3) 1f else 0f
     }
 
     private fun layoutPanes(width: Int) {
@@ -228,23 +230,37 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
         } ?: return
         if (artwork.width <= 0 || songHost.height <= 0) return
         if (nativeArtworkSize == 0) nativeArtworkSize = artwork.width
-        songHost.getLocationInWindow(hostLocation)
-        root.rootView.getLocationInWindow(rootLocation)
         val artworkParent = artwork.parent as? View ?: return
-        artworkParent.getLocationInWindow(artworkParentLocation)
-        barrier.getLocationInWindow(barrierLocation)
+        val sheet = root.parent as? ViewGroup ?: return
+        val coordinator = sheet.parent as? View ?: return
+        val behavior = behaviorField.get(controller) ?: return
+        // Match native i.d's player-root layout space, independent of sheet position.
+        val hostTop = layoutTop(player, songHost)
+        val parentTop = layoutTop(player, artworkParent)
+        val metadataTop = layoutTop(player, barrier)
+        coordinator.getLocationInWindow(coordinatorLocation)
+        root.rootView.getLocationInWindow(rootLocation)
         @Suppress("DEPRECATION")
         val topInset = if (android.os.Build.VERSION.SDK_INT >= 30)
             root.rootWindowInsets?.getInsets(android.view.WindowInsets.Type.statusBars())?.top ?: 0
         else root.rootWindowInsets?.systemWindowInsetTop ?: 0
-        val top = maxOf(hostLocation[1], rootLocation[1] + topInset)
-        val topMargin = TabletArtworkLayoutPolicy.nativeTopMargin(
-            top.toFloat(), barrierLocation[1].toFloat(), artworkParentLocation[1].toFloat(), nativeArtworkSize.toFloat()) ?: return
+        // Insets belong to the expanded viewport even while the hidden player is below
+        // the screen. Reading its live window Y here drops the inset while collapsed.
+        val expandedPlayerTop = coordinatorLocation[1] + (expandedSheetTop.invoke(behavior) as Int) + layoutTop(sheet, player)
+        val localInset = (rootLocation[1] + topInset - expandedPlayerTop).coerceAtLeast(0)
+        val topMargin = TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(
+            hostTop.toFloat(), metadataTop.toFloat(), parentTop.toFloat(), nativeArtworkSize.toFloat(), localInset.toFloat()) ?: return
         // Native i.d uses layout rectangles, which exclude ancestor translations. Put the
         // resting cover position in its constraints so the native mini endpoint includes it.
         val changed = ConstraintLayoutPane.configureNativeArtworkContainer(artwork, nativeArtworkSize, topMargin)
         artworkDirty = changed
         if (changed) root.postInvalidateOnAnimation()
+    }
+
+    private fun layoutTop(ancestor: ViewGroup, view: View): Int {
+        view.getDrawingRect(artworkLayoutBounds)
+        ancestor.offsetDescendantRectToMyCoords(view, artworkLayoutBounds)
+        return artworkLayoutBounds.top
     }
 
     private fun resetArtwork() {

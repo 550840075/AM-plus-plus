@@ -6,6 +6,40 @@ import org.junit.Test
 
 class TabletArtworkLayoutPolicyTest {
     @Test
+    fun miniRelayoutRetainsTheSameExpandedEndpointAndDoesNotSnapOnCompletion() {
+        val expandedMargin = TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(0f, 900f, 24f, 600f, 24f)
+        assertEquals(138, expandedMargin)
+        // Previously, recalculating while the sheet was offscreen dropped the inset;
+        // completion added it again. Reconstruct that regression with actual numbers.
+        val collapsedWindowTop = 1_000f
+        val oldCollapsedMargin = TabletArtworkLayoutPolicy.nativeTopMargin(
+            maxOf(collapsedWindowTop, 24f), collapsedWindowTop + 900f, collapsedWindowTop + 24f, 600f)
+        assertEquals(126, oldCollapsedMargin)
+        for (restScale in listOf(1f, .85f, .95f)) {
+            // Playback scales the native card; neither its parent's layout nor the inset changes.
+            val miniMargin = requireNotNull(TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(0f, 900f, 24f, 600f, 24f))
+            assertEquals(expandedMargin, miniMargin)
+            val pivotOffset = 300f * (1f - restScale)
+            val miniTargetCenter = 24f + miniMargin + pivotOffset + 300f * restScale
+            val expandedTargetCenter = 24f + requireNotNull(expandedMargin) + 300f
+            assertEquals(expandedTargetCenter, miniTargetCenter, .001f)
+        }
+    }
+
+    @Test
+    fun alreadyInsetExpandedViewportDoesNotAddTheStatusBarTwice() {
+        assertEquals(126, TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(0f, 900f, 24f, 600f, 0f))
+        assertEquals(150, TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(48f, 900f, 24f, 600f, 24f))
+    }
+
+    @Test
+    fun unavailableViewportInsetLeavesNativeLayoutAlone() {
+        assertNull(TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(0f, 900f, 24f, 600f, Float.NaN))
+        assertNull(TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(0f, 900f, 24f, 600f, Float.POSITIVE_INFINITY))
+        assertNull(TabletArtworkLayoutPolicy.nativeTopMarginInPlayer(0f, 900f, 24f, 600f, -1f))
+    }
+
+    @Test
     fun nativeAnimationSeesTheCenteredPositionAtTheMiniEndpoint() {
         // Native offsetDescendantRectToMyCoords sees layout offsets, but excludes
         // ancestor translationY. Moving centering into topMargin removes that residual.

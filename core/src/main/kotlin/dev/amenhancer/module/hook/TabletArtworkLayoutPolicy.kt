@@ -11,6 +11,18 @@ data class TabletArtworkLayout(
  * the native cover fits in that interval.
  */
 object TabletArtworkLayoutPolicy {
+    /** All positions are local to player_root; insets are resolved against its expanded viewport. */
+    fun nativeTopMarginInPlayer(
+        hostTopPx: Float,
+        metadataTopPx: Float,
+        parentTopPx: Float,
+        nativeSizePx: Float,
+        topInsetPx: Float,
+    ): Int? {
+        if (!topInsetPx.isFinite() || topInsetPx < 0f) return null
+        return nativeTopMargin(maxOf(hostTopPx, topInsetPx), metadataTopPx, parentTopPx, nativeSizePx)
+    }
+
     /** Express centering in layout space, visible to the native descendant-rectangle animator. */
     fun nativeTopMargin(
         playerTopPx: Float,
