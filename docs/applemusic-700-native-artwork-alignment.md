@@ -23,4 +23,16 @@ v9 双栏虽已删除自定义封面插值，仍在 `FragmentTabletDualPaneSessi
 
 新增 5 项布局回归，覆盖居中位置能被原生布局坐标读取、状态栏/Fragment 父容器偏移、整体 sheet 位移、狭窄可用区间及无效测量。
 
-编译、测试、Lint、原包静态校验和签名包信息在构建完成后记录。平板仍需检查：播放/暂停下展开与收起、慢拖到 mini 前的最后几帧、中途反向拖动、SONG/QUEUE、动态封面、横竖屏和关闭双栏恢复。
+977 项测试均通过，失败/错误/跳过为 0；app/host-applemusic Debug Lint、Release vital Lint、全模块测试和 Release 构建通过，部分未变化任务使用 Gradle 已有结果。262 项原包契约、5 个精确 profile/316 个冻结目标、模块架构、32 个渲染参考文件和 2 个声明补丁检查通过。
+
+平板仍需检查：播放/暂停下展开与收起、慢拖到 mini 前的最后几帧、中途反向拖动、SONG/QUEUE、动态封面、横竖屏和关闭双栏恢复。当前 ADB 无设备，没有安装到设备，也没有真机通过结论。
+
+## 试用包
+
+`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-native-artwork-alignment-v10.apk`，源码提交 `6f88272`，版本 1.6.2/112，9,734,160 字节。
+
+SHA-256：`34c850de506e8d5b96035e17e4ba6e506a4eaba8ecd2b354a28225a97ce3a086`。
+
+APK v2 签名通过，沿用 RSA 4096 发布证书，证书 SHA-256 `6ed7800187c3513562334319723498fd01772396b9848d4aeba50622910be0d4`。6 个打包 profile/index JSON 与源码逐字节一致，版本信息、Xposed 入口、自定义封面接管方法缺席、原生观察/动态封面/v8 首帧交接保留均通过检查。
+
+安装后强制停止并重开 Apple Music，使旧进程的模块 Hook 卸载并加载新代码。v9 及此前包保留，数据格式和签名不变。
