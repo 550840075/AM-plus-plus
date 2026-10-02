@@ -34,4 +34,6 @@
 
 安装后建议检查：有／无 mini 的底栏位置；导航点击、重选和长按横滑；mini 播放／下一首和按压；展开／收起及中途反向；深浅色、横竖屏和关闭玻璃后的原生恢复。平板检查原生底部渐变只出现一次、双栏歌词和 QUEUE 仍正常。
 
-最终构建结果与签名 APK 记录在同任务的 `progress.md`；此前已验收平板 APK 保留不覆盖。原完整适配的元数据启动契约缺口及其他设备矩阵继续单独记录。
+最终实现提交：`25db0b6`。942 项测试通过（失败／错误／跳过均为0），app／glass／host-applemusic Debug Lint、Release vital Lint 和 Release 构建通过；242 项原包契约及20项手机资源绑定通过。六个打包 profile/index JSON 与源码逐字节一致，Xposed 入口存在；APK v2 签名有效、仍使用原 RSA4096 发布证书。
+
+签名安装包：`.scratch/applemusic-700-beta-analysis/AMpp-1.6.2-112-1606-phone-reference-v5.apk`，9,717,228 字节，SHA-256：`d4e4faecefe21b008640806e70d3ae497f88924f090cd36a3931a2cd8e3b0655`。版本继续为1.6.2/112，配置 schema15 与资产格式不变。此前已验收平板 v4 APK 保留不覆盖。原完整适配的元数据启动契约缺口及其他设备矩阵继续单独记录。
