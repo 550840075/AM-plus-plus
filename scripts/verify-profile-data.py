@@ -24,6 +24,20 @@ def main():
         assert profile['verification']['version_code'] == str(key[2])
         if not profile['productionEnabled']:
             assert not any(profile['capabilities'].values())
+        if profile['productionEnabled'] and profile['family'] == 'fragment-content':
+            for point in ('LOCAL_MEDIA_PLAYER_METADATA_UPDATED', 'LOCAL_MEDIA_PLAYER_INDEX_CHANGED',
+                          'LOCAL_MEDIA_PLAYER_CONTROLLER_STATE'):
+                targets = profile['hookTargets'].get(point, [])
+                assert targets, f'missing required metadata bootstrap: {filename}/{point}'
+                for target in targets:
+                    assert target['methodName'] and target['parameterTypeNames'] is not None
+                    assert target['returnTypeName'] == 'void' and target['isStatic'] is False
+                    assert not target['allowFirstMatch']
+            state = profile['hookTargets']['LOCAL_MEDIA_PLAYER_CONTROLLER_STATE'][0]['runtimeMemberNames']
+            required = ('PLAYER_CURRENT_ITEM', 'QUEUE_ITEM_ITEM', 'QUEUE_ITEM_ID', 'MEDIA_ITEM_GENRE_NAME',
+                        'MEDIA_ITEM_DURATION', 'MEDIA_ITEM_TITLE', 'MEDIA_ITEM_SUBSCRIPTION_STORE_ID',
+                        'MEDIA_ITEM_PERSISTENT_ID', 'MEDIA_ITEM_ARTIST_NAME')
+            assert all(state.get(f'PLAYBACK_{member}_METHOD') for member in required), f'missing playback getters: {filename}'
         for point,targets in profile['hookTargets'].items():
             for target in targets:
                 target_count += 1

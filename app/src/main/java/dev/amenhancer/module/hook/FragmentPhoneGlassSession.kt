@@ -15,7 +15,7 @@ internal class FragmentPhoneGlassSession(
     private val surface: FragmentPlayerSurfacePort,
     config: TargetConfigClient,
     private val ready: () -> Unit,
-    failure: (Throwable) -> Unit,
+    private val failure: (Throwable) -> Unit,
 ) : PhoneGlassSession(surface.activity, config, checkNotNull(surface.phoneChrome), failure), FragmentGlassSessionLifecycle {
     private val native = checkNotNull(surface.phoneChrome)
     private val root = native.contentRoot
@@ -62,10 +62,14 @@ internal class FragmentPhoneGlassSession(
             ((GlassPolicy.NAV_HEIGHT_DP + config.settings().phoneLiquidGlassBottomGapDp) * density).toInt() + bottomInset))
         frame = this
     }
-    override fun miniMaterialParent(root: FrameLayout): FrameLayout = material ?: FragmentPhoneMaterialIsland(activity).apply {
+    override fun miniMaterialParent(root: FrameLayout): FrameLayout {
         val player = checkNotNull(native.find(ChromeResource.PLAYER_ROOT) as? ViewGroup)
-        player.addView(this, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        material = this
+        material?.takeIf { it.parent === player }?.let { return it }
+        material?.close(); material?.let { (it.parent as? ViewGroup)?.removeView(it) }
+        return FragmentPhoneMaterialIsland(activity).apply {
+            player.addView(this, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            material = this
+        }
     }
     override fun driveNavFrameExit(progress: Float) {
         val extent = GlassPolicy.occupiedHeight(density, bottomInset, miniVisible, bottomGapDp, geometry)
@@ -85,13 +89,31 @@ internal class FragmentPhoneGlassSession(
     }
     override fun onPreDraw(): Boolean {
         val draw = super.onPreDraw()
+        reconcileNativeMaterials()
         if (activated && !reported) { reported = true; ready() }
         return draw
     }
     override fun observeMiniTouch(event: MotionEvent) = observeTouch(event)
+    private fun reconcileNativeMaterials() {
+        // BlurView can reuse a recorded RenderNode without entering draw(). Own the actual
+        // native alpha too, so a resume-time setAlpha(1) cannot reveal it behind the glass.
+        surface.setNavigationGlassReady(activated && glassMenuReady && !closed)
+        surface.setMiniGlassReady(activated && !closed)
+    }
+    override fun foreground(active: Boolean) {
+        super.foreground(active)
+        if (closed || !active) return
+        try {
+            native.invalidateViews()
+            attachAvailableViews()
+            reconcileNativeMaterials()
+            root.invalidate()
+        } catch (error: Throwable) { close(); failure(error) }
+    }
     override fun close() {
         if (closed) return
         closed = true
+        surface.setNavigationGlassReady(false); surface.setMiniGlassReady(false)
         subscription.close(); hooks.close()
         super.close()
         frame?.let { (it.parent as? ViewGroup)?.removeView(it) }; frame = null

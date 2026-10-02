@@ -114,7 +114,10 @@ internal open class PhoneGlassSession(
     private var underlap = false
     private var scanNeeded = true
     private var scrollTargets: List<View> = emptyList()
-    private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { scanNeeded = true; hostBinding.invalidateViews() }
+    private var hierarchyDirty = false
+    private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+        scanNeeded = true; hierarchyDirty = true; hostBinding.invalidateViews()
+    }
     private var nextSettingsCheck = 0L
     protected val density get() = activity.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density).roundToInt()
@@ -289,12 +292,16 @@ internal open class PhoneGlassSession(
             observer = activity.window.decorView.viewTreeObserver.also { it.addOnPreDrawListener(this); it.addOnGlobalLayoutListener(layoutListener) }
         }
         val root = (find(ChromeResource.MINI_PLAYER) ?: find(ChromeResource.MINI_PLAYER_TOUCH_PANEL)) as? FrameLayout
-        if (root != null && root !== miniRoot) {
+        val content = root?.findViewById<View>(resourceId(ChromeResource.MINI_PLAYER_CONTENT))
+        if (root != null && (root !== miniRoot || content !== miniContent)) {
             miniGlass?.let { (it.parent as? ViewGroup)?.removeView(it) }
             miniRoot?.let { states.remove(it)?.restore(it) }
-            miniContent?.let { states.remove(it)?.restore(it) }
+            miniContent?.let {
+                transformOwners.remove(it)?.values?.forEach(AutoCloseable::close)
+                states.remove(it)?.restore(it)
+            }
             miniRoot = root
-            miniContent = root.findViewById(resourceId(ChromeResource.MINI_PLAYER_CONTENT))
+            miniContent = content
             val bg = backdrop ?: return
             val glass = GlassHostView(moduleContext()).also { miniGlass = it }
             glass.alpha = 0f
@@ -391,6 +398,7 @@ internal open class PhoneGlassSession(
         if (closed || failureScheduled) return true
         states.forEach { (view,state) -> state.observeNative(view) }
         try {
+            if (hierarchyDirty) { hierarchyDirty = false; attachAvailableViews() }
             val now = android.os.SystemClock.uptimeMillis()
             if (now >= nextSettingsCheck) {
                 nextSettingsCheck = now + 500

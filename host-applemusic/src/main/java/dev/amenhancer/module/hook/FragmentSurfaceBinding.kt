@@ -42,7 +42,8 @@ internal class FragmentSurfaceBinding(
     override val navigation = FragmentChromeNavigation(owner, nav, placement, contract, callbacks)
     override val pageFamily = HostPageFamily.FRAGMENT_VIEW
     override val viewSessionIdentity: Any get() = root
-    private val alphas = IdentityHashMap<View, AlphaLease>()
+    private val alphas = IdentityHashMap<View, FragmentNativeAlphaLease>()
+    private fun alphaLease(view: View) = FragmentNativeAlphaLease({ view.alpha }, { view.alpha = it })
     private val backgrounds = IdentityHashMap<View, OwnedHostProperty<android.graphics.drawable.Drawable?>>()
     private val clip = OwnedHostProperty({ nav.clipBounds?.let(::Rect) }, { nav.clipBounds = it })
     private val accessibility = OwnedHostProperty({ nav.importantForAccessibility }, { nav.importantForAccessibility = it })
@@ -77,7 +78,7 @@ internal class FragmentSurfaceBinding(
 
     init {
         check(root !== sheet && root !== source) { "Glass requires a content-root sibling island" }
-        listOfNotNull(nav, navBlur, miniBlur).forEach { alphas[it] = AlphaLease(it) }
+        listOfNotNull(nav, navBlur, miniBlur).forEach { alphas[it] = alphaLease(it) }
         resolveMini()
         tree.addOnPreDrawListener(this)
         tree.addOnGlobalLayoutListener(layout)
@@ -98,7 +99,7 @@ internal class FragmentSurfaceBinding(
         playerContent = find("playerContent")
         playerBackground = find("playerBackground")
         playerMotion = find("playerMotion")
-        listOfNotNull(playerBackground, playerMotion, playerContent).forEach { alphas.getOrPut(it) { AlphaLease(it) } }
+        listOfNotNull(playerBackground, playerMotion, playerContent).forEach { alphas.getOrPut(it) { alphaLease(it) } }
         if (playerOutline == null) materialParent?.let { player ->
             playerOutline = OwnedHostProperty({ player.clipToOutline }, { player.clipToOutline = it })
         }
@@ -144,8 +145,7 @@ internal class FragmentSurfaceBinding(
         tabletChrome?.alphaWrite(view, alpha)?.let { return it }
         phoneChrome?.alpha(view, alpha)?.let { return it }
         val lease = alphas[view] ?: return null
-        lease.native = alpha
-        return if (lease.factor != 1f) lease.own(alpha * lease.factor) else null
+        return lease.hostWrite(alpha)
     }
 
     override fun setNavigationGlassReady(ready: Boolean) { navReady = ready; applyOwnership() }
@@ -233,23 +233,4 @@ internal class FragmentSurfaceBinding(
         mini = null; miniTouch = null
     }
 
-    private class AlphaLease(val view: View) {
-        var native = view.alpha
-        var factor = 1f
-            private set
-        private var last: Float? = null
-        fun observe() { if (view.alpha != last) native = view.alpha }
-        fun own(alpha: Float): Float { last = alpha; return alpha }
-        fun hide(value: Boolean) = scale(if (value) 0f else 1f)
-        fun scale(value: Float) {
-            observe()
-            val old = factor
-            factor = value
-            if (value != 1f) view.alpha = own(native * value)
-            else if (old != 1f) {
-                if (view.alpha == last) view.alpha = own(native)
-                last = null
-            }
-        }
-    }
 }

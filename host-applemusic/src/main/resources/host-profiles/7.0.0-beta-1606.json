@@ -624,7 +624,38 @@
       }
     ],
     "PLAYER_LYRICS_AVAILABILITY_CALCULATOR": [],
-    "LOCAL_MEDIA_PLAYER_CONTROLLER_STATE": [],
+    "LOCAL_MEDIA_PLAYER_CONTROLLER_STATE": [
+      {
+        "className": "com.apple.android.music.playback.controller.LocalMediaPlayerController",
+        "methodName": "onPlaybackStateChanged",
+        "parameterCount": 3,
+        "parameterTypeNames": [
+          "com.apple.android.music.playback.player.MediaPlayer",
+          "int",
+          "int"
+        ],
+        "returnTypeName": "void",
+        "isStatic": false,
+        "includeSynthetic": false,
+        "allowFirstMatch": false,
+        "runtimeMemberNames": {
+          "PLAYBACK_MEDIA_ITEM_GENRE_NAME_METHOD": "getGenreName",
+          "PLAYBACK_MEDIA_ITEM_DURATION_METHOD": "getDuration",
+          "PLAYBACK_MEDIA_ITEM_TITLE_METHOD": "getTitle",
+          "PLAYBACK_MEDIA_ITEM_SUBSCRIPTION_STORE_ID_METHOD": "getSubscriptionStoreId",
+          "PLAYBACK_PLAYER_CURRENT_ITEM_METHOD": "getCurrentItem",
+          "PLAYBACK_QUEUE_ITEM_ITEM_METHOD": "getItem",
+          "PLAYBACK_MEDIA_ITEM_PERSISTENT_ID_METHOD": "getPersistentId",
+          "PLAYBACK_QUEUE_ITEM_ID_METHOD": "getPlaybackQueueId",
+          "PLAYBACK_MEDIA_ITEM_ARTIST_NAME_METHOD": "getArtistName"
+        },
+        "requiredInvokedMethodDescriptors": [],
+        "requiredInvokedMethodNames": [],
+        "requiredCallerMethodNames": [],
+        "contractId": "LOCAL_MEDIA_PLAYER_CONTROLLER_STATE",
+        "resolutionPolicy": "exact-required"
+      }
+    ],
     "LYRICS_TTML_PARSER": [],
     "EPOXY_FINAL_BIND": [
       {
@@ -651,7 +682,28 @@
         "resolutionPolicy": "exact-required"
       }
     ],
-    "LOCAL_MEDIA_PLAYER_INDEX_CHANGED": [],
+    "LOCAL_MEDIA_PLAYER_INDEX_CHANGED": [
+      {
+        "className": "com.apple.android.music.playback.controller.LocalMediaPlayerController",
+        "methodName": "onPlaybackIndexChanged",
+        "parameterCount": 3,
+        "parameterTypeNames": [
+          "com.apple.android.music.playback.player.MediaPlayer",
+          "int",
+          "int"
+        ],
+        "returnTypeName": "void",
+        "isStatic": false,
+        "includeSynthetic": false,
+        "allowFirstMatch": false,
+        "runtimeMemberNames": {},
+        "requiredInvokedMethodDescriptors": [],
+        "requiredInvokedMethodNames": [],
+        "requiredCallerMethodNames": [],
+        "contractId": "LOCAL_MEDIA_PLAYER_INDEX_CHANGED",
+        "resolutionPolicy": "exact-required"
+      }
+    ],
     "DATA_BINDING_RUNTIME_CLASSES": [
       {
         "parameterTypeNames": null,
@@ -1972,7 +2024,9 @@
       ],
       "Lcom/apple/android/music/mediaapi/repository/MediaApiRepositoryHolder;": [],
       "Lcom/apple/android/music/playback/controller/LocalMediaPlayerController;": [
-        "onMetadataUpdated(Lcom/apple/android/music/playback/player/MediaPlayer;Lcom/apple/android/music/playback/model/PlayerQueueItem;)V"
+        "onMetadataUpdated(Lcom/apple/android/music/playback/player/MediaPlayer;Lcom/apple/android/music/playback/model/PlayerQueueItem;)V",
+        "onPlaybackIndexChanged(Lcom/apple/android/music/playback/player/MediaPlayer;II)V",
+        "onPlaybackStateChanged(Lcom/apple/android/music/playback/player/MediaPlayer;II)V"
       ],
       "Lz0/t0;": [
         "toString()Ljava/lang/String;"
@@ -2088,6 +2142,21 @@
       "Lcom/google/android/material/bottomsheet/BottomSheetBehavior;": [
         "F()I",
         "L(IZ)V"
+      ],
+      "Lcom/apple/android/music/playback/player/MediaPlayer;": [
+        "getCurrentItem()Lcom/apple/android/music/playback/model/PlayerQueueItem;"
+      ],
+      "Lcom/apple/android/music/playback/model/PlayerQueueItem;": [
+        "getItem()Lcom/apple/android/music/playback/model/PlayerMediaItem;",
+        "getPlaybackQueueId()J"
+      ],
+      "Lcom/apple/android/music/playback/model/PlayerMediaItem;": [
+        "getGenreName()Ljava/lang/String;",
+        "getDuration()J",
+        "getTitle()Ljava/lang/String;",
+        "getSubscriptionStoreId()Ljava/lang/String;",
+        "getPersistentId()J",
+        "getArtistName()Ljava/lang/String;"
       ]
     },
     "fields": {
