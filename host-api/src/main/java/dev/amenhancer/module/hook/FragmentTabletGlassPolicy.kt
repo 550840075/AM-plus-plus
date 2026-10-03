@@ -26,4 +26,3 @@ object FragmentTabletGlassPolicy {
             x >= left && y >= top && x < left.toFloat() + width && y < top.toFloat() + height
     }
 }
-

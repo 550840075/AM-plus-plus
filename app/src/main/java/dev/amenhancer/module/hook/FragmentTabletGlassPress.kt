@@ -23,4 +23,3 @@ internal class FragmentTabletGlassPress(private val slop: Float) {
 
     fun finish() { token = null }
 }
-
