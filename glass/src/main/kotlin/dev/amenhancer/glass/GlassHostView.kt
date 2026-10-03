@@ -42,6 +42,13 @@ class GlassHostView(context: Context, bleedDp: Int = 32) : FrameLayout(context) 
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool)
     }
 
+    /** Fade the expanded drawing bounds, including shadows, without clipping to the hit bounds. */
+    var contentAlpha: Float
+        get() = compose.alpha
+        set(value) {
+            compose.alpha = if (value.isFinite()) value.coerceIn(0f, 1f) else 0f
+        }
+
     init {
         clipChildren = false
         clipToPadding = false

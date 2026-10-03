@@ -171,7 +171,7 @@ internal class FragmentTabletGlassSession(
                 overlay?.z = maxOf(nav.anchor.z, nav.content.z)
                 updatePlayerLayers(transition)
                 glassExpansion = transition.expansion
-                nav.glass.alpha = navOpacity
+                nav.glass.contentAlpha = navOpacity
                 min.glass.alpha = miniOpacity
                 if (navOpacity <= 0.001f) release(nav)
                 if (miniOpacity <= 0.001f) release(min)
@@ -213,8 +213,11 @@ internal class FragmentTabletGlassSession(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         val context = moduleContext()
         fun surface(anchor: View, native: View, navigation: Boolean): Surface {
-            val glass = GlassHostView(context).apply {
-                alpha = 0f
+            // The default 24dp shadow extends 48dp plus its 4dp offset. Fade the
+            // padded Compose layer, not the smaller capsule/hit rectangle: fractional
+            // View alpha on that rectangle clips the shadow before the tabs fade.
+            val glass = GlassHostView(context, bleedDp = if (navigation) 64 else 32).apply {
+                if (navigation) contentAlpha = 0f else alpha = 0f
                 importantForAccessibility = if (navigation) View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
                     else View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             }
@@ -356,7 +359,7 @@ internal class FragmentTabletGlassSession(
         val point = IntArray(2).also(nav.glass::getLocationOnScreen)
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             val x = event.rawX - point[0]; val y = event.rawY - point[1]
-            navGesture = event.downTime.takeIf { nav.glass.alpha > 0.001f &&
+            navGesture = event.downTime.takeIf { nav.glass.contentAlpha > 0.001f &&
                 FragmentTabletGlassPolicy.Bounds(0, 0, nav.glass.width, nav.glass.height).contains(x, y) }
         }
         if (navGesture != event.downTime) return false
