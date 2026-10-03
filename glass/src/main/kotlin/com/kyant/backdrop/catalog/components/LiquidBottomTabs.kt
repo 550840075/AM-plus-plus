@@ -4,7 +4,7 @@
  * 65ab177e90e5c1d8c62e70cf7755841982da65f6, Apache License 2.0.
  * Changed by AM++: optional host accent, tap-only native reselection, free thumb dragging with
  * multi-finger hand-over and a panel highlight pinned to the thumb's centre (the reference draws
- * the same light a row inset to the left), and a reduced 20% surface tint.
+ * the same light a row inset to the left).
  * See backdrop/UPSTREAM.md and THIRD_PARTY_NOTICES.md.
  */
 
@@ -101,8 +101,8 @@ fun LiquidBottomTabs(
         if (isLightTheme) Color(0xFF0088FF)
         else Color(0xFF0091FF)
     val containerColor =
-        if (isLightTheme) Color(0xFFFAFAFA).copy(0.2f)
-        else Color(0xFF121212).copy(0.2f)
+        if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)
+        else Color(0xFF121212).copy(0.4f)
 
     val tabsBackdrop = rememberLayerBackdrop()
 

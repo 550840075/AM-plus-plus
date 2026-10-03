@@ -46,8 +46,8 @@ fun NativeLiquidButton(
     miniHeightDp: Int = GlassPolicy.MINI_HEIGHT_DP,
     transformContent: (Float, Float, Float, Float) -> Unit,
 ) {
-    val containerColor = if (isSystemInDarkTheme()) Color(0xFF121212).copy(alpha = 0.2f)
-        else Color(0xFFFAFAFA).copy(alpha = 0.2f)
+    val containerColor = if (isSystemInDarkTheme()) Color(0xFF121212).copy(alpha = 0.4f)
+        else Color(0xFFFAFAFA).copy(alpha = 0.4f)
     val scope = rememberCoroutineScope()
     val highlight = remember(scope) { InteractiveHighlight(scope) }
     DisposableEffect(input, highlight) {
