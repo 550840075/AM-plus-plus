@@ -152,7 +152,9 @@ internal class BetaLyricsPaneRuntime(private val lyricsClass: Class<*>, private 
 
         fun owns(adapter: Any): Boolean = !closed && fragmentRef.get()?.let { karaoke.owns(it, adapter) } == true
         fun prepareRowWidth(adapter: Any, row: Any) {
-            if (closed || !TabletModeQualifier.isEligible(recycler.context)) return
+            // A saved right fragment can bind before portrait restoration removes it.
+            // Its native width contract must hold until onDestroyView, in either orientation.
+            if (closed) return
             karaoke.initialize(adapter, row, recycler.width)?.let { width ->
                 ModernXposedRuntime.log("1606 right lyrics: initialized cached-row karaoke width=$width viewport=${recycler.width}")
             }

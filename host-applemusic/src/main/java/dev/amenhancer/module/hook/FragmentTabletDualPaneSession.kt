@@ -17,9 +17,11 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
     private val originalParams = songHost.layoutParams
     private var originalIndex = player.indexOfChild(songHost)
     private val wrapper = object : FrameLayout(root.context) {
-        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-            super.onSizeChanged(w, h, oldw, oldh)
-            layoutPanes(w)
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            // Restored lyric rows can bind during the first layout. Set their real
+            // viewport before child measurement, not in the later onSizeChanged.
+            layoutPanes(View.MeasureSpec.getSize(widthMeasureSpec))
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         }
     }.apply { clipChildren = false; clipToPadding = false }
     // Outside resource-ID space, stable across process recreation for native fragment saved state.
@@ -130,16 +132,24 @@ internal class FragmentTabletDualPaneSession(val controller: Any, val root: View
 
     private fun layoutPanes(width: Int) {
         if (!installed || width <= 0) return
-        val half = if (FragmentTabletDualPaneCoordinator.eligible(root.context)) width / 2 else width
+        val dualPane = FragmentTabletDualPaneCoordinator.eligible(root.context)
+        val half = if (dualPane) width / 2 else width
         val leftGap = (48 * root.resources.displayMetrics.density).toInt()
         val rightGap = (16 * root.resources.displayMetrics.density).toInt()
-        songHost.layoutParams = FrameLayout.LayoutParams((half - 2 * leftGap).coerceAtLeast(1), ViewGroup.LayoutParams.MATCH_PARENT).apply {
-            leftMargin = leftGap; rightMargin = leftGap
-        }
-        right.layoutParams = FrameLayout.LayoutParams((width - half - 2 * rightGap).coerceAtLeast(1), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.RIGHT).apply {
-            leftMargin = rightGap; rightMargin = rightGap
-        }
+        setPaneLayout(songHost, (half - 2 * leftGap).coerceAtLeast(1), leftGap, -1)
+        // Android restores the saved right Fragment before the queued removal commits.
+        // Keep a real viewport during that hand-off instead of collapsing it to 1px.
+        setPaneLayout(right, FragmentDualPanePolicy.rightPaneWidth(width, dualPane, rightGap), rightGap, Gravity.RIGHT)
         artworkDirty = true
+    }
+
+    private fun setPaneLayout(view: View, width: Int, gap: Int, gravity: Int) {
+        val current = view.layoutParams as? FrameLayout.LayoutParams
+        if (current?.width == width && current.height == ViewGroup.LayoutParams.MATCH_PARENT &&
+            current.leftMargin == gap && current.rightMargin == gap && current.gravity == gravity) return
+        view.layoutParams = FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT, gravity).apply {
+            leftMargin = gap; rightMargin = gap
+        }
     }
 
     private fun commit(tx: Any, action: () -> Unit) {
