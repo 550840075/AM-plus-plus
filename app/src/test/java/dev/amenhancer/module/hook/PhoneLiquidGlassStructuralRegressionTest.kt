@@ -121,7 +121,7 @@ class PhoneLiquidGlassStructuralRegressionTest {
         // RecyclerView shrinks every page, so the page stops above the glass and the bar
         // samples empty background (Search results looked opaque). The pager host must stay
         // out of the padding targets and previously padded targets must be released.
-        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.all {
+        assertTrue(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.all.filter { it.family == "legacy-activity" }.all {
             it.document.getJSONObject("chrome").getJSONObject("views").getString("pagerType") ==
                 "androidx.viewpager2.widget.ViewPager2"
         })

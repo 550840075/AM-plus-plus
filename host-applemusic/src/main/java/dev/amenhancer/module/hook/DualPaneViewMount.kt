@@ -68,6 +68,18 @@ internal object ConstraintLayoutPane {
     private const val PLAYER_ROOT = "player_root"
     private const val PLAYER_FRAGMENTS_HOST = "player_fragments_host"
     private const val PARENT_ID = 0
+
+    /** Reference 1606 phone bottom frame: copy native params and preserve the host class loader. */
+    fun newBottomNavigationFrameParams(template: ViewGroup.LayoutParams, height: Int): ViewGroup.MarginLayoutParams =
+        newLayoutParams(template, ViewGroup.LayoutParams.MATCH_PARENT, height).apply {
+            setMargins(0, 0, 0, 0)
+            marginStart = 0; marginEnd = 0
+            constrainFullWidth(this)
+            setInt("topToTop", -1)
+            setInt("topToBottom", -1)
+            setInt("bottomToTop", -1)
+            setInt("bottomToBottom", PARENT_ID)
+        }
     private object BottomNavigationLandscapeInstalled
     /**
      * Apple Music 6.5.0 repackages ConstraintLayout. Its LayoutParams keeps
@@ -112,6 +124,38 @@ internal object ConstraintLayoutPane {
         return candidateIds.asSequence()
             .mapNotNull { candidateId -> view.findViewById<ViewGroup>(candidateId) }
             .firstOrNull()
+    }
+
+    /** Reference1606: fix the native cover's constraint size before aligning its sheet frame. */
+    fun configureArtworkContainer(artwork: View, sizePx: Int): Boolean {
+        val params = constraintMarginParams(artwork, ARTWORK_CONTAINER)
+        if (params.width == sizePx && params.height == sizePx && params.topMargin == 0 && params.bottomMargin == 0 &&
+            constraintField(params.javaClass, "topToTop")?.getInt(params) == PARENT_ID &&
+            constraintField(params.javaClass, "topToBottom")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "dimensionRatio")?.get(params) == null) return false
+        params.width = sizePx; params.height = sizePx; params.topMargin = 0; params.bottomMargin = 0
+        params.setObject("dimensionRatio", null)
+        params.setInt("topToTop", PARENT_ID); params.setInt("topToBottom", -1)
+        artwork.layoutParams = params
+        return true
+    }
+
+    /** 1606 native animation reads layout coordinates; centering must be an actual top margin. */
+    fun configureNativeArtworkContainer(artwork: View, sizePx: Int, topMarginPx: Int): Boolean {
+        val params = constraintMarginParams(artwork, ARTWORK_CONTAINER)
+        if (params.width == sizePx && params.height == sizePx && params.topMargin == topMarginPx && params.bottomMargin == 0 &&
+            constraintField(params.javaClass, "topToTop")?.getInt(params) == PARENT_ID &&
+            constraintField(params.javaClass, "topToBottom")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "bottomToTop")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "bottomToBottom")?.getInt(params) == -1 &&
+            constraintField(params.javaClass, "dimensionRatio")?.get(params) == null) return false
+        params.width = sizePx; params.height = sizePx; params.topMargin = topMarginPx; params.bottomMargin = 0
+        params.setObject("dimensionRatio", null)
+        params.setInt("topToTop", PARENT_ID); params.setInt("topToBottom", -1)
+        // A remaining bottom anchor would apply vertical bias on top of the explicit margin.
+        params.setInt("bottomToTop", -1); params.setInt("bottomToBottom", -1)
+        artwork.layoutParams = params
+        return true
     }
 
     /**

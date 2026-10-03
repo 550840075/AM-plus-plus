@@ -176,13 +176,26 @@ internal class IndexedTargetSymbolResolver(
         }
 
     private fun <T : Any> resolveUncached(symbol: TargetSymbolKey<T>): TargetResolution<T> {
+        profile?.methodContracts?.get(symbol.id)?.let { contract ->
+            val candidates = index.load(contract.owner)?.declaredMethods.orEmpty().filter(contract::matches)
+            @Suppress("UNCHECKED_CAST")
+            return select(symbol, candidates as List<T>, SymbolMatch.VERSION_PROFILE)
+                ?: TargetResolution.Missing(symbol.id, profile.id)
+        }
+        profile?.fieldContracts?.get(symbol.id)?.let { contract ->
+            val candidates = index.load(contract.owner)?.declaredFields.orEmpty().filter(contract::matches)
+            @Suppress("UNCHECKED_CAST")
+            return select(symbol, candidates as List<T>, SymbolMatch.VERSION_PROFILE)
+                ?: TargetResolution.Missing(symbol.id, profile.id)
+        }
         if (profile != null && symbol.profilePolicy != ProfilePolicy.NO_PROFILE) {
             select(
                 symbol,
                 symbol.profileCandidates(index, profile),
                 SymbolMatch.VERSION_PROFILE,
             )?.let { return it }
-            if (symbol.profilePolicy == ProfilePolicy.EXACT_REQUIRED) {
+            if (symbol.profilePolicy == ProfilePolicy.EXACT_REQUIRED ||
+                symbol.id in profile.methodContracts || symbol.id in profile.fieldContracts) {
                 return TargetResolution.Missing(symbol.id, profile.id)
             }
         }
@@ -222,7 +235,28 @@ internal data class AppleMusicProfile(
     val exactClasses: Map<TargetSymbolId, String>,
     val exactMethods: Map<TargetSymbolId, String> = emptyMap(),
     val exactFields: Map<TargetSymbolId, String> = emptyMap(),
+    val methodContracts: Map<String, ProfileMethodContract> = emptyMap(),
+    val fieldContracts: Map<String, ProfileFieldContract> = emptyMap(),
 )
+
+/** Complete descriptors for verified new-build seams; legacy predicates remain unchanged. */
+internal data class ProfileMethodContract(
+    val owner: String,
+    val name: String,
+    val parameters: List<String>,
+    val returns: String,
+    val isStatic: Boolean,
+) {
+    fun matches(method: Method): Boolean = method.declaringClass.name == owner &&
+        method.name == name && method.parameterTypes.map { it.name } == parameters &&
+        method.returnType.name == returns && Modifier.isStatic(method.modifiers) == isStatic &&
+        !Modifier.isAbstract(method.modifiers) && !method.isBridge && !method.isSynthetic
+}
+
+internal data class ProfileFieldContract(val owner: String, val name: String, val type: String) {
+    fun matches(field: Field): Boolean = field.declaringClass.name == owner &&
+        field.name == name && field.type.name == type && !Modifier.isStatic(field.modifiers)
+}
 
 internal enum class TargetSymbolId {
     PLAYER_CONTROLLER,
@@ -262,7 +296,7 @@ internal enum class TargetSymbolId {
     CELLULAR_AVAILABILITY_METHOD,
 }
 
-private object AppleMusicProfiles {
+internal object AppleMusicProfiles {
     fun match(build: TargetBuild): AppleMusicProfile? =
         dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(
             build.packageName, build.versionName, build.versionCode,
@@ -274,7 +308,20 @@ private object AppleMusicProfiles {
                     TargetSymbolId.valueOf(key) to values.getString(key)
                 }
             }
-            AppleMusicProfile(profile.id, names("classes"), names("methods"), names("fields"))
+            val methods = indexed.optJSONObject("methodContracts")
+            val fields = indexed.optJSONObject("fieldContracts")
+            AppleMusicProfile(profile.id, names("classes"), names("methods"), names("fields"),
+                methods?.keys()?.asSequence()?.associateWith { key ->
+                    val entry = methods.getJSONObject(key)
+                    val parameters = entry.getJSONArray("parameters")
+                    ProfileMethodContract(entry.getString("owner"), entry.getString("name"),
+                        List(parameters.length()) { parameters.getString(it) },
+                        entry.getString("returns"), entry.getBoolean("static"))
+                }.orEmpty(),
+                fields?.keys()?.asSequence()?.associateWith { key ->
+                    val entry = fields.getJSONObject(key)
+                    ProfileFieldContract(entry.getString("owner"), entry.getString("name"), entry.getString("type"))
+                }.orEmpty())
         }
 }
 
@@ -715,7 +762,8 @@ internal object AppleMusicSymbols {
                 profile?.exactClasses?.get(TargetSymbolId.PLAYER_METADATA_HUB)
                     ?.let(::load)
                     ?.declaredMethods
-                    ?.filter(::isPlayerMetadataPublishMethod)
+                    ?.filter { method -> profile?.methodContracts?.get("player-metadata-publish-method")
+                        ?.matches(method) ?: isPlayerMetadataPublishMethod(method) }
                     .orEmpty()
             }.getOrDefault(emptyList())
         },
@@ -780,7 +828,8 @@ internal object AppleMusicSymbols {
                 profile?.exactClasses?.get(TargetSymbolId.LYRICS_CURRENT_ITEM_FIELD)
                     ?.let(::load)
                     ?.declaredFields
-                    ?.filter(::isLyricsCurrentItemField)
+                    ?.filter { field -> profile?.fieldContracts?.get("lyrics-current-item-field")
+                        ?.matches(field) ?: isLyricsCurrentItemField(field) }
                     .orEmpty()
             }.getOrDefault(emptyList())
         },
@@ -1763,13 +1812,15 @@ private fun methodSymbol(
     profileCandidates = { profile ->
         runCatching {
             val expectedMethodName = exactMethodId?.let { profile?.exactMethods?.get(it) }
+            val exactContract = profile?.methodContracts?.get(id)
+            val matches: (Method) -> Boolean = { method -> exactContract?.matches(method) ?: contract(method) }
             profile?.exactClasses?.get(profileOwner)
                 ?.let(::load)
                 ?.let { owner ->
                     val methods = if (searchHierarchy) {
-                        methodsFromHierarchy(owner, contract)
+                        methodsFromHierarchy(owner, matches)
                     } else {
-                        owner.declaredMethods.filter(contract)
+                        owner.declaredMethods.filter(matches)
                     }
                     methods.filter { method ->
                         expectedMethodName == null || method.name == expectedMethodName

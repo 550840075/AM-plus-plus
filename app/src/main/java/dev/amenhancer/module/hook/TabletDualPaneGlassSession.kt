@@ -27,7 +27,10 @@ internal class TabletDualPaneGlassSession(
     activity: Activity,
     config: TargetConfigClient,
     failure: (Throwable) -> Unit,
-) : PhoneGlassSession(activity, config, failure) {
+) : PhoneGlassSession(activity, config, failure = failure) {
+
+    // Native tablet chrome owns its edge gradient; do not add a second blurred wash.
+    override val navigationScrimEnabled: Boolean = false
 
     private val touchGate = TabletGlassGestureGate()
     private var miniPressDownTime: Long? = null

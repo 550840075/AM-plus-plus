@@ -58,7 +58,8 @@ class EditorialVideoFeatureStructuralRegressionTest {
         assertTrue(storage.contains("ampp-embedded-settings"))
         assertTrue(client.contains("valuesProvider"))
         assertFalse(settings.contains("平板隐藏编辑视频"))
-        assertTrue(settings.contains("平板横屏启用双栏，同时停用 Editorial Video"))
+        // Copy is independent of the legacy key; the visible row controls dual pane.
+        assertTrue(settings.contains("settings.copy(dualPaneEnabled = it)"))
     }
 
     @Test

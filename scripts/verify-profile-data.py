@@ -24,6 +24,20 @@ def main():
         assert profile['verification']['version_code'] == str(key[2])
         if not profile['productionEnabled']:
             assert not any(profile['capabilities'].values())
+        if profile['productionEnabled'] and profile['family'] == 'fragment-content':
+            for point in ('LOCAL_MEDIA_PLAYER_METADATA_UPDATED', 'LOCAL_MEDIA_PLAYER_INDEX_CHANGED',
+                          'LOCAL_MEDIA_PLAYER_CONTROLLER_STATE'):
+                targets = profile['hookTargets'].get(point, [])
+                assert targets, f'missing required metadata bootstrap: {filename}/{point}'
+                for target in targets:
+                    assert target['methodName'] and target['parameterTypeNames'] is not None
+                    assert target['returnTypeName'] == 'void' and target['isStatic'] is False
+                    assert not target['allowFirstMatch']
+            state = profile['hookTargets']['LOCAL_MEDIA_PLAYER_CONTROLLER_STATE'][0]['runtimeMemberNames']
+            required = ('PLAYER_CURRENT_ITEM', 'QUEUE_ITEM_ITEM', 'QUEUE_ITEM_ID', 'MEDIA_ITEM_GENRE_NAME',
+                        'MEDIA_ITEM_DURATION', 'MEDIA_ITEM_TITLE', 'MEDIA_ITEM_SUBSCRIPTION_STORE_ID',
+                        'MEDIA_ITEM_PERSISTENT_ID', 'MEDIA_ITEM_ARTIST_NAME')
+            assert all(state.get(f'PLAYBACK_{member}_METHOD') for member in required), f'missing playback getters: {filename}'
         for point,targets in profile['hookTargets'].items():
             for target in targets:
                 target_count += 1
@@ -37,6 +51,14 @@ def main():
         if not baseline_path.is_file():
             assert profile.get('ambiguityPolicy', 'reject-ambiguous') == 'reject-ambiguous'
             assert not profile.get('legacyFirstMatchExceptions'), 'new profiles cannot inherit first-match exceptions'
+            for target_list in profile['hookTargets'].values():
+                assert all(not target['allowFirstMatch'] for target in target_list), 'new profiles must reject ambiguous members'
+            for symbol, contract in profile['indexed'].get('methodContracts', {}).items():
+                assert symbol and contract['owner'] and contract['name'] and contract['returns']
+                assert isinstance(contract['static'], bool) and isinstance(contract['parameters'], list)
+                assert all(isinstance(value, str) and value for value in contract['parameters'])
+            for symbol, contract in profile['indexed'].get('fieldContracts', {}).items():
+                assert symbol and all(contract[key] for key in ('owner', 'name', 'type'))
         if baseline_path.is_file():
             baseline = json.loads(baseline_path.read_text(encoding='utf-8'))
             assert profile['indexed'] == baseline['indexed'], f'indexed baseline drift: {filename}'

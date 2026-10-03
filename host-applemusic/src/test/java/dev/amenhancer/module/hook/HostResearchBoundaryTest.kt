@@ -6,13 +6,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class HostResearchBoundaryTest {
-    @Test fun `beta evidence never enters production profiles`() {
+    @Test fun `historical research evidence is separate from the verified exact profile`() {
         val fixture = javaClass.classLoader!!.getResourceAsStream("research/7.0.0-beta-1606.json")!!
             .bufferedReader().use { JSONObject(it.readText()) }
         assertFalse(fixture.getBoolean("productionEnabled"))
         assertTrue(fixture.getJSONObject("player").getBoolean("restrictedFragmentContainer"))
-        assertFalse(AppleMusicHostProfiles.isProductionBuild(fixture.getString("packageName"),fixture.getString("versionName"),fixture.getLong("versionCode")))
-        assertNull(AppleMusicHostProfiles.find(fixture.getString("packageName"),fixture.getString("versionName"),fixture.getLong("versionCode")))
+        assertTrue(AppleMusicHostProfiles.isProductionBuild(fixture.getString("packageName"),fixture.getString("versionName"),fixture.getLong("versionCode")))
+        val profile = AppleMusicHostProfiles.find(fixture.getString("packageName"),fixture.getString("versionName"),fixture.getLong("versionCode"))!!
+        assertEquals("fragment-content", profile.family)
+        assertTrue(AppleMusicHostProfiles.supportsGlass(1606, "7.0.0-beta"))
+        assertTrue(AppleMusicHostProfiles.supportsCellular(profile.packageName, "7.0.0-beta", 1606))
+        assertFalse(AppleMusicHostProfiles.supportsGlass(1606, "7.0.0"))
+        assertFalse(AppleMusicHostProfiles.isProductionBuild(profile.packageName, "7.0.0-beta", 1607))
+        assertFalse(profile.document.getJSONObject("evidence").getBoolean("runtimeVerified"))
+        assertEquals(0, profile.document.getJSONArray("legacyFirstMatchExceptions").length())
+        assertNull(AppleMusicHostProfiles.find(fixture.getString("packageName"), "7.0.0", fixture.getLong("versionCode")))
+        assertNull(AppleMusicHostProfiles.find(fixture.getString("packageName"), fixture.getString("versionName"), 1607))
     }
     @Test fun `old Activity and future Fragment expose independent navigation and mini regions`() {
         val fixtures = listOf(

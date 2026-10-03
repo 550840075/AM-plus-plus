@@ -317,7 +317,7 @@ internal fun EmbeddedSettingsHost.renderEmbeddedMainPage(
             addView(embeddedSettingRow(
                 activity,
                 "平板双栏播放器",
-                "平板横屏启用双栏，同时停用 Editorial Video",
+                "平板横屏启用双栏",
                 settings.dualPaneEnabled,
                 iconTint = EmbeddedSettingsPalette.primary,
                 iconDrawable = EmbeddedGlyphDrawable(

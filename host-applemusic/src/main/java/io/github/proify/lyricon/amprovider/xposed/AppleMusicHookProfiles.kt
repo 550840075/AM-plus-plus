@@ -381,12 +381,14 @@ internal data class AppleMusicHookProfile(
     val versionName: String,
     val versionCodes: Set<Long>,
     private val hookTargets: Map<AppleMusicHookPoint, List<AppleMusicHookTarget>>,
+    val strict: Boolean = false,
 ) {
     fun targets(hookPoint: AppleMusicHookPoint): List<AppleMusicHookTarget> =
         hookTargets[hookPoint].orEmpty()
 
     fun matches(version: AppleMusicVersion): Boolean =
-        version.versionCode?.let(versionCodes::contains) == true ||
+        if (strict) version.versionName == versionName && version.versionCode in versionCodes
+        else version.versionCode?.let(versionCodes::contains) == true ||
             version.versionName == versionName
 }
 
@@ -406,7 +408,7 @@ internal object AppleMusicHookProfiles {
                 List(entries.length()) { index -> decodeTarget(point, entries.getJSONObject(index)) }
             }
             AppleMusicHookProfile(profile.document.getString("hookProfileId"), profile.versionName,
-                setOf(profile.versionCode), targets)
+                setOf(profile.versionCode), targets, profile.family == "fragment-content")
         }
     }
 
@@ -442,8 +444,12 @@ internal object AppleMusicHookProfiles {
     fun exactTargets(version: AppleMusicVersion, hookPoint: AppleMusicHookPoint): List<AppleMusicHookTarget> =
         profileFor(version)?.targets(hookPoint).orEmpty()
 
-    fun candidates(version: AppleMusicVersion, hookPoint: AppleMusicHookPoint): List<AppleMusicHookTarget> =
-        (exactTargets(version, hookPoint) + KNOWN_PROFILES.flatMap { it.targets(hookPoint) }).distinct()
+    fun candidates(version: AppleMusicVersion, hookPoint: AppleMusicHookPoint): List<AppleMusicHookTarget> {
+        val profile = profileFor(version)
+        if (profile?.strict == true) return profile.targets(hookPoint)
+        return (exactTargets(version, hookPoint) + KNOWN_PROFILES.filterNot { it.strict }
+            .flatMap { it.targets(hookPoint) }).distinct()
+    }
 }
 
 internal data class ResolvedAppleMusicHookClass(
@@ -537,6 +543,7 @@ internal class AppleMusicHookResolver(
         }
         val resolved = LinkedHashMap<String, ResolvedAppleMusicHookClass>()
         exactClasses.forEach { resolved.putIfAbsent(it.clazz.name, it) }
+        if (profile?.strict == true) return resolved.values.toList()
 
         val compatibilityClasses = AppleMusicHookProfiles.candidates(version, hookPoint)
             .filterNot { target -> exactClasses.any { it.target.className == target.className } }
@@ -602,7 +609,7 @@ internal class AppleMusicHookResolver(
                 ),
             )
         }
-        dexKitResolver?.resolveClasses(hookPoint, AppleMusicHookProfiles.candidates(version, hookPoint))
+        if (profile?.strict != true) dexKitResolver?.resolveClasses(hookPoint, AppleMusicHookProfiles.candidates(version, hookPoint))
             ?.firstOrNull()
             ?.let { return it }
         resolveDexKitMethod(hookPoint)?.let { resolved ->
@@ -679,6 +686,7 @@ internal class AppleMusicHookResolver(
     private fun resolveDexKitMethod(
         hookPoint: AppleMusicHookPoint,
     ): ResolvedAppleMusicHookMethod? {
+        if (profile?.strict == true) return null
         val candidates = AppleMusicHookProfiles.candidates(version, hookPoint)
         if (candidates.none { it.methodName != null || it.parameterCount != null }) return null
         return dexKitResolver?.resolveMethod(
@@ -718,6 +726,7 @@ internal class AppleMusicHookResolver(
         resolved: ResolvedAppleMusicHookClass,
         baselineClassName: String,
     ): ResolvedAppleMusicHookClass {
+        if (profile?.strict == true) return resolved
         val repairedTarget = dexKitResolver?.repairRuntimeMembers(
             hookPoint = hookPoint,
             target = resolved.target,
@@ -738,6 +747,7 @@ internal class AppleMusicHookResolver(
         resolved: ResolvedAppleMusicHookMethod,
         baselineClassName: String,
     ): ResolvedAppleMusicHookMethod {
+        if (profile?.strict == true) return resolved
         val repairedTarget = dexKitResolver?.repairRuntimeMembers(
             hookPoint = hookPoint,
             target = resolved.target,

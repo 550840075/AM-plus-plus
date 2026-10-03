@@ -13,18 +13,31 @@ object AppleMusicHostFactory {
         val build=targetBuild(context)
         return checkNotNull(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(build.packageName,build.versionName,build.versionCode)).document.getJSONObject("settings")
     }
+    private fun fragmentFamily(context: android.content.Context): Boolean {
+        val build = targetBuild(context)
+        return dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(
+            build.packageName, build.versionName, build.versionCode,
+        )?.family == "fragment-content"
+    }
+    fun preservesNativeEditorialVideo(context: android.content.Context): Boolean = fragmentFamily(context)
     fun settingsActivityMatcher(context: android.content.Context, playerClass: Class<*>?): SettingsActivityMatcher =
-        settingsNames(context).let { LegacySettingsActivityMatcher(playerClass,it.getString("playerActivity"),it.getString("mainActivity")) }
+        if (fragmentFamily(context)) FragmentSettingsNativeFactory.activityMatcher(context)
+        else settingsNames(context).let { LegacySettingsActivityMatcher(playerClass,it.getString("playerActivity"),it.getString("mainActivity")) }
     fun settingsViewBridge(context: android.content.Context, onOpen: (android.app.Activity)->Unit): SettingsViewBridge =
-        LegacySettingsViewBridge(context,onOpen)
+        if (fragmentFamily(context)) FragmentSettingsNativeFactory.viewBridge(context,onOpen)
+        else LegacySettingsViewBridge(context,onOpen)
     fun installSettingsEntry(context: android.content.Context, loader: ClassLoader, observer: SettingsEntryObserver) =
-        LegacySettingsEntryInstaller(context).install(loader,observer)
+        if (fragmentFamily(context)) { FragmentSettingsNativeFactory.install(context,loader,observer); Unit }
+        else LegacySettingsEntryInstaller(context).install(loader,observer)
 
     fun bindChrome(activity: android.app.Activity): ChromeHostBinding = LegacyChromeHostBinding(activity)
     fun installChromeHooks(loader: ClassLoader, build: TargetBuild, observer: ChromeHookObserver): HostSubscription =
         LegacyChromeHookInstaller.install(loader, build, observer)
     fun newTypefaceResources(): LyricsTypefaceResourceBinding = LyricsTypefaceSession()
-    fun registerDualPaneResources() = DualPaneResourceHook.install()
+    fun registerDualPaneResources() {
+        DualPaneResourceHook.install()
+        FragmentDualPaneResources.install()
+    }
     fun registerLyricAuxiliaryResources() = LyricCreditsRowResourceHook.install()
     fun installLayoutCallbacks() = LayoutInflationRegistry.install()
     fun registerChromeResources(observer: (View) -> Unit) {
@@ -42,7 +55,7 @@ object AppleMusicHostFactory {
     ): TargetAdaptation {
         val build = targetBuild(application)
         val profile = checkNotNull(dev.amenhancer.host.applemusic.AppleMusicHostProfiles.find(build.packageName, build.versionName, build.versionCode))
-        check(profile.family == "legacy-activity") {
+        check(profile.family in setOf("legacy-activity", "fragment-content")) {
             "Host family ${profile.family} needs its own verified native capability factory"
         }
         val resolver = IndexedTargetSymbolResolver(
@@ -54,15 +67,21 @@ object AppleMusicHostFactory {
             identity = build.displayName,
             build = build,
             currentSong = currentSong,
-            dualPane = AppleMusicDualPaneTarget(resolver, build),
-            editorialVideo = AppleMusicEditorialVideoTarget(application, resolver),
-            cellularDataEntry = AppleMusicCellularDataEntryTarget(
+            dualPane = if (profile.family == "fragment-content") FragmentDualPaneTarget(resolver, build)
+                else AppleMusicDualPaneTarget(resolver, build),
+            editorialVideo = editorialVideoTargetForFamily(profile.family) {
+                AppleMusicEditorialVideoTarget(application, resolver)
+            },
+            cellularDataEntry = if (profile.family == "fragment-content") FragmentCellularDataEntryTarget(
+                resolver, build, classLoader, { config.settings().forceCellularDataEntryEnabled },
+            ) else AppleMusicCellularDataEntryTarget(
                 symbols = resolver,
                 build = build,
                 enabled = { config.settings().forceCellularDataEntryEnabled },
             ),
             bidirectionalLyricBlur = AppleMusicBidirectionalLyricBlurTarget(resolver),
-            cjkKaraokeAnimation = AppleMusicCjkKaraokeAnimationTarget(resolver),
+            cjkKaraokeAnimation = AppleMusicCjkKaraokeAnimationTarget(resolver,
+                profile.document.optJSONObject("cjk")?.optString("foregroundTextField", "U") ?: "U"),
             lyricsTypeface = AppleMusicLyricsTypefaceTarget(
                 symbols = resolver,
                 session = lyricsTypefaceSession as LyricsTypefaceSession,

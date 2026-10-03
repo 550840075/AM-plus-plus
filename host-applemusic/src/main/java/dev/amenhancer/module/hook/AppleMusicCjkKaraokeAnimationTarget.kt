@@ -19,6 +19,7 @@ import java.util.WeakHashMap
  */
 internal class AppleMusicCjkKaraokeAnimationTarget(
     private val symbols: TargetSymbolResolver,
+    private val foregroundTextField: String = "U",
 ) : CjkKaraokeAnimationTarget {
     private val a0Depth: ThreadLocal<Int> = ThreadLocal.withInitial { 0 }
     private val a0SingleWordStack: ThreadLocal<MutableList<CjkEntryState?>> =
@@ -126,7 +127,7 @@ internal class AppleMusicCjkKaraokeAnimationTarget(
         }
 
         return TargetCapabilityInstall.Active(
-            "Installed exact 6.5.2/1586 single-unmerged-CJK glow end cleanup",
+            "Installed exact single-unmerged-CJK glow end cleanup: ${a0.toGenericString()}",
         )
     }
 
@@ -338,7 +339,7 @@ internal class AppleMusicCjkKaraokeAnimationTarget(
         }
         val views = mutableListOf<Any>()
         bindings.forEach { binding ->
-            val view = binding?.let { readNamedField(it, "U") } ?: return@forEach
+            val view = binding?.let { readNamedField(it, foregroundTextField) } ?: return@forEach
             if (views.none { it === view }) views += view
         }
         return views
