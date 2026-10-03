@@ -99,6 +99,8 @@ internal open class PhoneGlassSession(
     private var slottedMiniContent: View? = null
     private var lastPeek = -1
     private val nativePeek = NativePeekHeight()
+    private val overflowClips = java.util.IdentityHashMap<ViewGroup, dev.amenhancer.module.host.OwnedHostClipping>()
+    private val captureWait = dev.amenhancer.module.host.GlassCaptureWait()
     private val attachHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var behaviorRetries = 0
     private var retryPending = false
@@ -200,9 +202,14 @@ internal open class PhoneGlassSession(
     private fun allowGlassOverflow(view: View) {
         generateSequence(view as View?) { it.parent as? View }.takeWhile { it.layoutParams != null }.forEach {
             if (it is ViewGroup) {
-                save(it)
-                it.clipChildren = false
-                it.clipToPadding = false
+                // Ancestors include DecorView: a clipping lease must never restore its
+                // visibility/alpha/layout from an earlier background window snapshot.
+                overflowClips.getOrPut(it) {
+                    dev.amenhancer.module.host.OwnedHostClipping(
+                        { it.clipChildren }, { value -> it.clipChildren = value },
+                        { it.clipToPadding }, { value -> it.clipToPadding = value },
+                    )
+                }.allowOverflow()
             }
         }
     }
@@ -426,11 +433,18 @@ internal open class PhoneGlassSession(
                 updateGeometry()
                 val sourceNeedsLayout = updateUnderlap()
                 val transitionNeedsLayout = updateTransition()
+                val waitingForCapture = glassConsumersVisible && backdrop?.ready == false && canRefreshBackdrop()
+                if (captureWait.timedOut(now, waitingForCapture)) {
+                    scheduleFailure(IllegalStateException("Glass backdrop resume timed out; restoring native drawing"))
+                    return true
+                }
                 // Insets can be reapplied when the native player finishes collapsing.
                 // setLayoutParams only schedules layout: do not expose the old, shorter
                 // content bounds (and window background beneath them) in this frame.
-                if (navGlassRevealed || sourceNeedsLayout || transitionNeedsLayout ||
-                    (glassConsumersVisible && backdrop?.ready == false && canRefreshBackdrop())) return false
+                if (navGlassRevealed || sourceNeedsLayout || transitionNeedsLayout || waitingForCapture) {
+                    if (waitingForCapture) activity.window.decorView.postInvalidateOnAnimation()
+                    return false
+                }
             } else if (backdrop?.ready == true) {
                 // Keep the initial capture for activation, but stop recording while
                 // the menu has not produced a visible glass surface yet.
@@ -785,7 +799,10 @@ internal open class PhoneGlassSession(
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) observingPress = false
     }
 
-    override fun foreground(active: Boolean) { navGlass?.foreground(active); navScrim?.foreground(active); miniGlass?.foreground(active) }
+    override fun foreground(active: Boolean) {
+        if (!active) captureWait.timedOut(0L, false)
+        navGlass?.foreground(active); navScrim?.foreground(active); miniGlass?.foreground(active)
+    }
 
     protected open fun findPlayerBehavior(): Any? = hostBinding.playerBehavior(false)
 
@@ -809,6 +826,8 @@ internal open class PhoneGlassSession(
         listOfNotNull(navGlass, navScrim, miniGlass).forEach { (it.parent as? ViewGroup)?.removeView(it) }
         states.forEach { (view, state) -> state.restore(view) }
         states.clear()
+        overflowClips.values.forEach(AutoCloseable::close)
+        overflowClips.clear()
         transformOwners.values.forEach { it.values.forEach(AutoCloseable::close) }
         transformOwners.clear()
         layerAlphas.forEach { (view, state) -> view.alpha = state.native }

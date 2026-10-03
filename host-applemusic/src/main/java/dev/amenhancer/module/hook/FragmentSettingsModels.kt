@@ -113,7 +113,10 @@ internal class FragmentSettingsModels private constructor(
 
     fun prependUnique(original: Any?, category: Any): Any? {
         val items = original as? List<*> ?: return original
-        // Never mutate Apple's list: the early not-ready result is an immutable singleton.
+        // 1606 returns an empty singleton while preferencesStateFlow is null.
+        // Keep that not-ready result native; add the entry when settings are populated.
+        if (items.isEmpty()) return original
+        // Never mutate Apple's list.
         return ArrayList<Any?>(items.size + 1).apply {
             add(category)
             items.filterNot(::isModuleCategory).forEach(::add)
