@@ -46,9 +46,30 @@ class FragmentSettingsModelsTest {
         assertSame(own, result.first())
         assertSame(sameTitle, result.last())
         assertSame(host, result[1])
-        assertEquals(listOf(own), models.prependUnique(emptyList<Any>(), own))
+        val notReady = emptyList<Any>()
+        assertSame(notReady, models.prependUnique(notReady, own))
         assertNull(models.prependUnique(null, own))
         assertSame(host, models.prependUnique(host, own))
+    }
+
+    @Test
+    fun `native not ready results survive initial loading and resume while the entry returns once ready`() {
+        val sessions = FragmentSettingsSessions(models) {}
+        val fragment = Any()
+        val viewModel = Any()
+        val notReady = Collections.emptyList<Any>()
+        val nativeItem = Any()
+        val ready = Collections.unmodifiableList(listOf(nativeItem))
+        sessions.bind(fragment, viewModel)
+        assertSame(notReady, sessions.transform(viewModel, notReady))
+        val first = sessions.transform(viewModel, ready) as List<*>
+        assertSame(nativeItem, first[1])
+        assertSame(notReady, sessions.transform(viewModel, notReady))
+        val resumed = sessions.transform(viewModel, ready) as List<*>
+        assertEquals(2, resumed.size)
+        assertSame(first[0], resumed[0])
+        assertSame(nativeItem, resumed[1])
+        assertEquals(listOf(nativeItem), ready)
     }
 
     @Test
@@ -83,7 +104,7 @@ class FragmentSettingsModelsTest {
         val sessions = FragmentSettingsSessions(models) { opened++ }
         val fragment = Any()
         val viewModel = Any()
-        val original = emptyList<Any>()
+        val original = listOf(Any())
         sessions.bind(fragment, viewModel)
         val first = (sessions.transform(viewModel, original) as List<*>).first() as SettingsHostCategory
         val oldClick = (first.c.single() as SettingsHostAction).j!!
@@ -109,14 +130,14 @@ class FragmentSettingsModelsTest {
         val fragment = Any()
         val oldVm = Any()
         val nextVm = Any()
-        val original = emptyList<Any>()
+        val original = listOf(Any())
         sessions.bind(fragment, oldVm)
         val old = (sessions.transform(oldVm, original) as List<*>).first() as SettingsHostCategory
         sessions.bind(fragment, nextVm)
         assertSame(original, sessions.transform(oldVm, original))
         (old.c.single() as SettingsHostAction).j!!.invoke()
         assertEquals(0, opened)
-        assertEquals(1, (sessions.transform(nextVm, original) as List<*>).size)
+        assertEquals(2, (sessions.transform(nextVm, original) as List<*>).size)
     }
 
     @Test
@@ -126,10 +147,11 @@ class FragmentSettingsModelsTest {
         val firstFragment = Any()
         val secondFragment = Any()
         val viewModel = Any()
+        val original = listOf(Any())
         sessions.bind(firstFragment, viewModel)
-        val first = (sessions.transform(viewModel, emptyList<Any>()) as List<*>).first() as SettingsHostCategory
+        val first = (sessions.transform(viewModel, original) as List<*>).first() as SettingsHostCategory
         sessions.bind(secondFragment, viewModel)
-        val next = (sessions.transform(viewModel, emptyList<Any>()) as List<*>).first() as SettingsHostCategory
+        val next = (sessions.transform(viewModel, original) as List<*>).first() as SettingsHostCategory
         (first.c.single() as SettingsHostAction).j!!.invoke()
         (next.c.single() as SettingsHostAction).j!!.invoke()
         assertEquals(listOf(secondFragment), opened)

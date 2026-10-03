@@ -91,6 +91,7 @@ internal class FragmentTabletGlassSession(
         var pressed = false
     }
 
+    private val captureWait = dev.amenhancer.module.host.GlassCaptureWait()
     private var subscription: HostSubscription? = null
     init { subscription = surface.observe { state -> if (state.expansion != slide) onSlide(state.expansion) }; start() }
 
@@ -176,7 +177,14 @@ internal class FragmentTabletGlassSession(
                 if (navOpacity <= 0.001f) release(nav)
                 if (miniOpacity <= 0.001f) release(min)
                 // Moving the glass does not change its sampling source or require canceling native frames.
-                if (visible && (captureChanged || backdrop?.ready != true)) draw = false
+                val waitingForCapture = visible && backdrop?.ready != true
+                check(!captureWait.timedOut(now, waitingForCapture)) {
+                    "Tablet glass backdrop resume timed out; restoring native drawing"
+                }
+                if (visible && (captureChanged || waitingForCapture)) {
+                    root.postInvalidateOnAnimation()
+                    draw = false
+                }
             }
         }
         return draw
@@ -427,6 +435,7 @@ internal class FragmentTabletGlassSession(
         navigation?.glass?.foreground(value)
         mini?.glass?.foreground(value)
         if (!value) {
+            captureWait.timedOut(0L, false)
             listOfNotNull(navigation, mini).forEach(::release)
             backdrop?.setCaptureEnabled(false)
         } else root.invalidate()
@@ -453,6 +462,7 @@ internal class FragmentTabletGlassSession(
     }
 
     private fun removeMaterials() {
+        captureWait.timedOut(0L, false)
         replacing = false; navGesture = null; navContentWidth = 0; navContentHeight = 0
         listOfNotNull(navigation, mini).forEach(::release)
         native.restore()
