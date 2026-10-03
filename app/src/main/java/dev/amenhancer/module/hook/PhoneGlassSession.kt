@@ -99,7 +99,12 @@ internal open class PhoneGlassSession(
     private var slottedMiniContent: View? = null
     private var lastPeek = -1
     private val nativePeek = NativePeekHeight()
-    private val overflowClips = java.util.IdentityHashMap<ViewGroup, dev.amenhancer.module.host.OwnedHostClipping>()
+    private val overflowClips = dev.amenhancer.module.host.HostClippingLeases<ViewGroup> { view ->
+        dev.amenhancer.module.host.OwnedHostClipping(
+            { view.clipChildren }, { view.clipChildren = it },
+            { view.clipToPadding }, { view.clipToPadding = it },
+        )
+    }
     private val captureWait = dev.amenhancer.module.host.GlassCaptureWait()
     private val attachHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var behaviorRetries = 0
@@ -199,19 +204,13 @@ internal open class PhoneGlassSession(
         if (view.background != null) view.background = null
     }
 
+    private fun overflowAncestors(view: View?): Sequence<ViewGroup> =
+        generateSequence(view) { it.parent as? View }
+            .takeWhile { it.layoutParams != null }.filterIsInstance<ViewGroup>()
+
     private fun allowGlassOverflow(view: View) {
-        generateSequence(view as View?) { it.parent as? View }.takeWhile { it.layoutParams != null }.forEach {
-            if (it is ViewGroup) {
-                // Ancestors include DecorView: a clipping lease must never restore its
-                // visibility/alpha/layout from an earlier background window snapshot.
-                overflowClips.getOrPut(it) {
-                    dev.amenhancer.module.host.OwnedHostClipping(
-                        { it.clipChildren }, { value -> it.clipChildren = value },
-                        { it.clipToPadding }, { value -> it.clipToPadding = value },
-                    )
-                }.allowOverflow()
-            }
-        }
+        // Ancestors include DecorView: own clipping, never its visibility/alpha/layout.
+        overflowAncestors(view).forEach(overflowClips::allowOverflow)
     }
 
     // Form seams overridden by the dual-pane session; the phone behavior below stays
@@ -307,6 +306,9 @@ internal open class PhoneGlassSession(
                 transformOwners.remove(it)?.values?.forEach(AutoCloseable::close)
                 states.remove(it)?.restore(it)
             }
+            // Restore old NativeViewState first; its clipping baseline may already be false.
+            // Drop detached roots/private ancestors, keeping those used by either live surface.
+            overflowClips.retainOnly((overflowAncestors(navFrame) + overflowAncestors(root)).asIterable())
             miniRoot = root
             miniContent = content
             val bg = backdrop ?: return
@@ -826,8 +828,7 @@ internal open class PhoneGlassSession(
         listOfNotNull(navGlass, navScrim, miniGlass).forEach { (it.parent as? ViewGroup)?.removeView(it) }
         states.forEach { (view, state) -> state.restore(view) }
         states.clear()
-        overflowClips.values.forEach(AutoCloseable::close)
-        overflowClips.clear()
+        overflowClips.close()
         transformOwners.values.forEach { it.values.forEach(AutoCloseable::close) }
         transformOwners.clear()
         layerAlphas.forEach { (view, state) -> view.alpha = state.native }
